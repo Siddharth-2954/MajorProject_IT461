@@ -208,27 +208,28 @@ const Home = () => {
   const { setUser } = useContext(AuthContext);
 
   async function handleLogin(values) {
+    // Use students login endpoint: send email + password
     const payload = {
-      id: values.loginNumber,
       email: values.email,
-      dt: values.dob,
+      password: values.loginPassword,
     };
     setLoginLoading(true);
     try {
-      const res = await fetch('http://localhost:8000/auth/login', {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const res = await fetch('http://localhost:8000/students/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify(payload),
       });
       const json = await res.json();
       if (res.ok && json.success) {
-        message.success("Login successful");
-        // update client auth state
+        message.success('Login successful');
         try { setUser(json.user); } catch (e) {}
         navigate('/home');
-      } else {
+      } else if (res.status === 401) {
         message.error(json.error || 'Invalid credentials');
+      } else {
+        message.error(json.error || 'Login failed');
       }
     } catch (err) {
       console.error(err);
@@ -391,18 +392,32 @@ const Home = () => {
                   <Input placeholder="Enter your email" />
                 </Form.Item>
 
-                <Form.Item
-                  label="Date of Birth"
-                  name="dob"
-                  rules={[
-                    {
-                      required: true,
-                      message: "Please select your date of birth",
-                    },
-                  ]}
-                >
-                  <Input type="date" />
-                </Form.Item>
+                <Row gutter={12}>
+                  <Col xs={24} sm={10}>
+                    <Form.Item
+                      label="Date of Birth"
+                      name="dob"
+                      rules={[
+                        {
+                          required: true,
+                          message: "Please select your date of birth",
+                        },
+                      ]}
+                    >
+                      <Input type="date" />
+                    </Form.Item>
+                  </Col>
+
+                  <Col xs={24} sm={14}>
+                    <Form.Item
+                      label="Password"
+                      name="loginPassword"
+                      rules={[{ required: true }]}
+                    >
+                      <Input.Password placeholder="Enter password" />
+                    </Form.Item>
+                  </Col>
+                </Row>
 
                 <Form.Item className="mt-auto">
                   <Button type="primary" htmlType="submit" block loading={loginLoading}>

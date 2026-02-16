@@ -21,6 +21,7 @@ import LVRC from "./components/upcoming_events/LVRC";
 import { Table, Card, Typography } from 'antd';
 import AnnouncementsLMS from "./components/Announcements/AnnouncementsLMS";
 import AnnouncementsExam from "./components/Announcements/AnnouncementsExam";
+import AnnouncementDetail from "./components/Announcements/AnnouncementDetail";
 import Mocktest from "./components/upcoming_events/mocktest";
 import MocktestDetail from "./components/upcoming_events/MocktestDetail";
 import Webinar from "./components/upcoming_events/Webinar";
@@ -40,6 +41,8 @@ import LVC_Feedback from "./components/Students/LVC_Feedback";
 import ProtectedRoute from './ProtectedRoute';
 import LVRC_Feedback from "./components/Students/LVRC_Feedback";
 import LiveClasses from "./components/Students/LiveClasses";
+import DownloadNotes from "./components/Students/DownloadNotes";
+import MCQDashboard from "./components/Students/MCQDashboard";
 
 const { Title } = Typography;
 
@@ -90,6 +93,8 @@ export default function App() {
         <Route path="/contact" element={<Contact />} />
         <Route path="/announcements/lms" element={<AnnouncementsLMS />} />
         <Route path="/announcements/exam" element={<AnnouncementsExam />} />
+        <Route path="/announcements/lms/:id" element={<AnnouncementDetail />} />
+        <Route path="/announcements/exam/:id" element={<AnnouncementDetail />} />
         <Route path="/events/mocktest" element={<Mocktest />} />
         <Route path="/events/mocktest/:id" element={<MocktestDetail />} />
         <Route path="/events/webinar" element={<Webinar />} />
@@ -117,8 +122,11 @@ export default function App() {
         {/* Students Routes */}
         <Route path="/home" element={<ProtectedRoute><StudentHome/></ProtectedRoute>} />
         <Route path="/lvc_feedback" element={<ProtectedRoute><LVC_Feedback/></ProtectedRoute>} />
+        <Route path="/lvc-feedback" element={<ProtectedRoute><LVC_Feedback/></ProtectedRoute>} />
         <Route path="/lvrc_feedback" element={<ProtectedRoute><LVRC_Feedback/></ProtectedRoute>} />
         <Route path="/live_classes" element={<ProtectedRoute><LiveClasses/></ProtectedRoute>} />
+        <Route path="/download-notes" element={<ProtectedRoute><DownloadNotes/></ProtectedRoute>} />
+        <Route path="/mcq-dashboard" element={<ProtectedRoute><MCQDashboard/></ProtectedRoute>} />
 
 
       </Routes>

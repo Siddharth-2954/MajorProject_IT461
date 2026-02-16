@@ -16,13 +16,13 @@ import Captcha from "./steps/Captcha";
 const steps = [
   {
     title: "Personal",
-    fields: ["firstName", "lastName", "email", "mobile"],
+    fields: ["firstName", "lastName", "email", "mobile", "password", "confirmPassword", "dob"],
     content: <PersonalStep />,
     icon: <UserOutlined />,
   },
   {
     title: "Address",
-    fields: ["addressLine1", "addressLine2", "city", "state", "pincode", "country"],
+    fields: ["registrationId", "addressLine1", "addressLine2", "city", "state", "pincode", "country"],
     content: <AddressStep />,
     icon: <HomeOutlined />,
   },
@@ -66,8 +66,28 @@ export default function StepForm() {
       }
 
       const allData = form.getFieldsValue(true);
-      console.log("All submitted data:", allData);
-      message.success("Form submitted successfully 🎉");
+
+      // send to server
+      try {
+        console.log('Submitting form data:', allData);
+        const res = await fetch('http://localhost:8000/students', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify(allData),
+        });
+        const json = await res.json();
+        if (res.ok && json.success) {
+          message.success('Form submitted successfully 🎉');
+          form.resetFields();
+          navigate('/');
+        } else {
+          message.error(json.error || 'Submission failed');
+        }
+      } catch (err) {
+        console.error('submit error', err);
+        message.error('Server error');
+      }
     } catch {
       message.error("Fix validation errors");
     }

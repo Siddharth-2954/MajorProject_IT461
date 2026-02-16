@@ -1,4 +1,4 @@
-import { Form, Input } from "antd";
+import { Form, Input, DatePicker } from "antd";
 
 export default function PersonalStep() {
   return (
@@ -32,6 +32,40 @@ export default function PersonalStep() {
         ]}
       >
         <Input maxLength={10} />
+      </Form.Item>
+
+      
+
+      <Form.Item
+        name="password"
+        label="Password"
+        rules={[{ required: true, message: 'Please enter a password' }, { min: 6, message: 'Password must be at least 6 characters' }]}
+      >
+        <Input.Password />
+      </Form.Item>
+
+      <Form.Item
+        name="confirmPassword"
+        label="Confirm Password"
+        dependencies={["password"]}
+        hasFeedback
+        rules={[
+          { required: true, message: 'Please confirm your password' },
+          ({ getFieldValue }) => ({
+            validator(_, value) {
+              if (!value || getFieldValue('password') === value) {
+                return Promise.resolve();
+              }
+              return Promise.reject(new Error('Passwords do not match'));
+            },
+          }),
+        ]}
+      >
+        <Input.Password />
+      </Form.Item>
+
+      <Form.Item name="dob" label="Date of Birth" rules={[{ required: true, type: "date" }]}>
+        <DatePicker style={{ width: '100%' }} format="YYYY-MM-DD" />
       </Form.Item>
     </>
   );

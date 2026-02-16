@@ -1,5 +1,6 @@
-import React from "react";
-import { UserOutlined, VideoCameraOutlined, PlayCircleOutlined, MessageOutlined } from "@ant-design/icons";
+import React, { useEffect, useState } from "react";
+import { UserOutlined, VideoCameraOutlined, PlayCircleOutlined, MessageOutlined, DownloadOutlined } from "@ant-design/icons";
+import { announcements } from '../../data/announcements';
 import { Card } from "antd";
 import { useNavigate } from "react-router-dom";
 
@@ -7,8 +8,30 @@ const defaultBg =
 	"https://images.unsplash.com/photo-1503264116251-35a269479413?auto=format&fit=crop&w=1400&q=80";
 
 export default function StudentHome({ id }) {
+	const [user, setUser] = useState(null);
+
+	useEffect(() => {
+		const fetchUser = async () => {
+			try {
+				const res = await fetch('http://localhost:8000/students/me', { credentials: 'include' });
+				if (res.ok) {
+					const json = await res.json();
+					if (json && json.authenticated && json.user) setUser(json.user);
+				}
+			} catch (e) {
+				// ignore
+			}
+		};
+		fetchUser();
+	}, []);
 	const navigate = useNavigate();
 	const bg = defaultBg;
+
+	const getAnnouncementRoute = (a) => {
+		const txt = (a.title + ' ' + (a.body || '')).toLowerCase();
+		if (/\b(mock|test|exam)\b/.test(txt)) return '/announcements/exam';
+		return '/announcements/lms';
+	};
 
 	const heroStyle = {
 		height: "220px",
@@ -61,7 +84,7 @@ export default function StudentHome({ id }) {
 
 	const sectionStyle = {
 		padding: "2.5rem 1rem",
-		maxWidth: 980,
+		maxWidth: '80%',
 		margin: "0 auto",
 	};
 
@@ -69,7 +92,6 @@ export default function StudentHome({ id }) {
 		cursor: "pointer",
 		borderRadius: 8,
 		boxShadow: "0 6px 18px rgba(0,0,0,0.08)",
-		padding: "0.75rem 0.75rem",
 		minHeight: "60px",
 		textAlign: "center",
 		fontFamily: welcomeStyle.fontFamily,
@@ -83,19 +105,19 @@ export default function StudentHome({ id }) {
 					<h1 style={welcomeStyle}>Welcome</h1>
 					<h2 style={adminRowStyle}>
 						<UserOutlined style={{ fontSize: 18 }} />
-						<span>Admin</span>
+						<span>{user?.firstName ?? 'Admin'}</span>
 						<span style={{ marginLeft: 12, fontFamily: welcomeStyle.fontFamily }}>
-							ID: {id ?? "123456"}
+							ID: {user?.registrationId ?? id ?? 'NA'}
 						</span>
 					</h2>
 				</div>
 			</header>
 
 			<section style={sectionStyle} aria-labelledby="top-features">
-				<h3 id="top-features" style={{ marginBottom: "0.75rem", display: "flex", justifyContent: "center", gap: 8, fontSize: "1rem", fontWeight: 600 }}>
+				<h3 id="top-features" style={{width: '100%', marginBottom: "0.75rem", display: "flex", justifyContent: "center", gap: 2, fontSize: "1rem", fontWeight: 600 }}>
 					Explore Top features
 				</h3>
-				<div style={{ maxWidth: 900, margin: "0 auto 1rem", padding: "0 0.1rem", display: "grid", gap: "3.2rem", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))" }}>
+				<div style={{ maxWidth: '100%', margin: "0 auto 1rem", display: "grid", gap: "2.2rem", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))" }}>
 					<Card style={cardStyle} onClick={() => navigate('/lvc_feedback')}>
 						<div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
 							<div style={{ color: '#059669', fontSize: 28 }}>
@@ -158,20 +180,72 @@ export default function StudentHome({ id }) {
 							</div>
 						</div>
 					</Card>
+
+									<Card style={cardStyle} onClick={() => navigate('/download-notes')}>
+						<div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+							<div style={{ color: '#0ea5a4', fontSize: 28 }}>
+												<DownloadOutlined />
+							</div>
+							<div style={{ textAlign: 'left' }}>
+								<strong style={{ fontSize: 16 }}>Download Notes/Assignments</strong>
+								<div style={{ color: '#666' }}>Downloadable notes and resources</div>
+							</div>
+						</div>
+					</Card>
+
+									<Card style={cardStyle} onClick={() => navigate('/mcq-dashboard')}>
+										<div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+											<div style={{ color: '#f59e0b', fontSize: 28 }}>
+												<PlayCircleOutlined />
+											</div>
+											<div style={{ textAlign: 'left' }}>
+												<strong style={{ fontSize: 16 }}>MCQ Practice</strong>
+												<div style={{ color: '#666' }}>Practice multiple-choice questions</div>
+											</div>
+										</div>
+									</Card>
 				</div>
 				
-				<div style={{ display: "grid", gap: "1.5rem", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))" }}>
-					<div style={{ padding: "1rem", border: "1px solid #e6e6e6", borderRadius: 8 }}>
-						<strong>Live Classes</strong>
-						<div>Attend interactive live sessions with instructors.</div>
+				{/* Announcements: show latest admin posts in two columns */}
+				<div style={{ display: 'grid', gap: '1rem', gridTemplateColumns: 'repeat(auto-fit,minmax(320px,1fr))' }}>
+					{/* Left: Latest announcement */}
+					<div style={{ padding: '1rem', border: '1px solid #e6e6e6', borderRadius: 8, background: '#fff' }}>
+						<strong style={{ display: 'block', marginBottom: 6 }}>Latest Announcements</strong>
+						{/* render two latest items */}
+						{announcements.slice(0, 2).map(a => (
+							<div
+								key={a.id}
+								role="button"
+								tabIndex={0}
+								onClick={() => navigate(`${getAnnouncementRoute(a)}/${a.id}`)}
+								onKeyDown={(e) => e.key === 'Enter' && navigate(`${getAnnouncementRoute(a)}/${a.id}`)}
+								style={{ cursor: 'pointer', padding: 12, borderRadius: 6, border: '1px solid #f0f0f0', marginBottom: 10, background: '#fafafa' }}
+							>
+								<div style={{ fontWeight: 600, color: '#0b5cff', fontSize: 16 }}>{a.title}</div>
+								<div style={{ color: '#666', fontSize: 13, margin: '6px 0' }}>{a.body}</div>
+								<div style={{ fontSize: 12, color: '#999' }}>{a.date} • {a.author}</div>
+							</div>
+						))}
 					</div>
-					<div style={{ padding: "1rem", border: "1px solid #e6e6e6", borderRadius: 8 }}>
-						<strong>Study Materials</strong>
-						<div>Downloadable notes and guided study paths.</div>
-					</div>
-					<div style={{ padding: "1rem", border: "1px solid #e6e6e6", borderRadius: 8 }}>
-						<strong>Mock Tests</strong>
-						<div>Practice full-length mock exams with analytics.</div>
+
+					{/* Right: All recent announcements in condensed list */}
+					<div style={{ padding: '1rem', border: '1px solid #e6e6e6', borderRadius: 8, background: '#fff' }}>
+						<strong style={{ display: 'block', marginBottom: 6 }}>All Recent Announcements</strong>
+						<div style={{ display: 'grid', gap: 8 }}>
+							{announcements.map(a => (
+								<div
+									key={a.id}
+									role="button"
+									tabIndex={0}
+									onClick={() => navigate(`${getAnnouncementRoute(a)}/${a.id}`)}
+									onKeyDown={(e) => e.key === 'Enter' && navigate(`${getAnnouncementRoute(a)}/${a.id}`)}
+									style={{ cursor: 'pointer', padding: 10, borderRadius: 6, border: '1px solid #f5f5f5' }}
+								>
+									<div style={{ fontWeight: 600, color: '#0b5cff', fontSize: 14 }}>{a.title}</div>
+									<div style={{ color: '#777', fontSize: 12 }}>{a.date}</div>
+								</div>
+							))}
+						</div>
 					</div>
 				</div>
 			</section>

@@ -4,6 +4,13 @@ export default function AddressStep() {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
       <Form.Item
+        name="registrationId"
+        label="Registration ID"
+        rules={[{ required: true, message: "Registration ID is required" }]}
+      >
+        <Input placeholder="Enter registration id" />
+      </Form.Item>
+      <Form.Item
         name="addressLine1"
         label="Address Line 1"
         rules={[{ required: true, message: "Address Line 1 is required" }]}
