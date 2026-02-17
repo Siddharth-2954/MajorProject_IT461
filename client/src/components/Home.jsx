@@ -208,13 +208,49 @@ const Home = () => {
   const { setUser } = useContext(AuthContext);
 
   async function handleLogin(values) {
-    // Use students login endpoint: send email + password
-    const payload = {
-      email: values.email,
-      password: values.loginPassword,
-    };
+    const isWroAdmin =
+      (values.loginNumber && String(values.loginNumber).startsWith('WRO')) ||
+      (values.email && ['wro@gmail.com', 'wro2@gmail.com'].includes(values.email));
+
     setLoginLoading(true);
     try {
+      // Admins (WRO...) use dedicated /admin/login endpoint
+      if (isWroAdmin) {
+        const adminPayload = {
+          email: values.email,
+          registrationId: values.loginNumber,
+          dob: values.dob,
+          password: values.loginPassword,
+        };
+
+        const res = await fetch('http://localhost:8000/admin/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify(adminPayload),
+        });
+        const json = await res.json();
+        if (res.ok && json.success) {
+          message.success('Admin login successful');
+          try { setUser(json.admin); } catch (e) {}
+          const redirect = json.adminRedirect || '/admin';
+          navigate(redirect);
+        } else if (res.status === 401) {
+          message.error(json.error || 'Invalid admin credentials');
+        } else {
+          message.error(json.error || 'Admin login failed');
+        }
+        return;
+      }
+
+      // Regular students use /students/login
+      const payload = {
+        email: values.email,
+        password: values.loginPassword,
+        registrationId: values.loginNumber || undefined,
+        dob: values.dob || undefined,
+      };
+
       const res = await fetch('http://localhost:8000/students/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -290,7 +326,7 @@ const Home = () => {
                     className="rounded-lg w-full max-h-60 md:max-h-80 object-cover"
                   />
                 }
-                bodyStyle={{ display: "none" }}
+                styles={{ body: { display: "none" } }}
               />
             )}
           </div>
@@ -352,14 +388,13 @@ const Home = () => {
                 </div>
               </Card>
             </div>
-          </Col>
-
+            </Col>
           {/* Simple Login Card */}
           <Col xs={24} md={12} className="h-full" id="student-login">
             <Card
               title="Student Login"
               className="w-full rounded-xl shadow-sm h-100 flex flex-col min-h-[220px] md:min-h-[300px]"
-              bordered
+              variant="outlined"
             >
               <Form
                 layout="vertical"

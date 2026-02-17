@@ -34,19 +34,17 @@ app.use(
 
 app.get('/health', (req, res) => res.json({ ok: true }));
 
-// Mount auth routes
+
+// Mount auth route (session-based)
 app.use('/auth', require('./routes/auth'));
+
 // Mount students route
 app.use('/students', require('./routes/students'));
 
-// Error-handling middleware (logs and returns 500)
-app.use((err, req, res, next) => {
-	console.error('Express error handler:', err && err.stack ? err.stack : err);
-	try {
-		if (err && err.sql) console.error('SQL:', err.sql);
-	} catch (e) {}
-	res.status(500).json({ error: 'server error' });
-});
+// Mount admin routes under ADMIN_ROUTE (default /org_admin)
+const adminRoute = process.env.ADMIN_ROUTE || '/admin';
+app.use(adminRoute, require('./routes/admin'));
+
 
 // Global process-level error handlers for uncaught exceptions/rejections
 process.on('uncaughtException', (err) => {

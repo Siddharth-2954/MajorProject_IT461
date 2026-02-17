@@ -1,4 +1,5 @@
-import { Routes, Route, Link } from "react-router-dom";
+import React, { useContext } from "react";
+import { Routes, Route, Link, useLocation } from "react-router-dom";
 import WebinarHome from "./components/WebinarHome";
 import WebinarList from "./components/Webinars/WebinarList";
 import WebinarDetails from "./components/Webinars/WebinarDetails";
@@ -43,15 +44,28 @@ import LVRC_Feedback from "./components/Students/LVRC_Feedback";
 import LiveClasses from "./components/Students/LiveClasses";
 import DownloadNotes from "./components/Students/DownloadNotes";
 import MCQDashboard from "./components/Students/MCQDashboard";
+import AdminHome from "./components/Admins/AdminHome";
+import AdminLayout from "./components/Admins/AdminLayout";
+import StudentsList from "./components/Admins/StudentsList";
+import { AuthContext } from "./AuthContext";
 
 const { Title } = Typography;
 
 
 export default function App() {
+  const location = useLocation();
+  const { user, authLoading } = useContext(AuthContext);
+
+  const isAdminUser = !!(
+    user &&
+    (user.isAdmin ||
+      (user.registrationId && String(user.registrationId).startsWith("WRO")))
+  );
+
   return (
     <>
-      {/* Simple top navbar */}
-      <Navbar/>
+      {/* Simple top navbar — render during auth loading to avoid flicker/hiding from stale localStorage */}
+      <Navbar />
       <Routes>
         {/* Home page */}
         <Route path="/" element={<Home />} />
@@ -127,6 +141,12 @@ export default function App() {
         <Route path="/live_classes" element={<ProtectedRoute><LiveClasses/></ProtectedRoute>} />
         <Route path="/download-notes" element={<ProtectedRoute><DownloadNotes/></ProtectedRoute>} />
         <Route path="/mcq-dashboard" element={<ProtectedRoute><MCQDashboard/></ProtectedRoute>} />
+
+        {/* Admin dashboard routes (session-based, side panel persists) */}
+        <Route path="/admin" element={<ProtectedRoute><AdminLayout/></ProtectedRoute>}>
+          <Route index element={<AdminHome/>} />
+          <Route path="students-list" element={<StudentsList/>} />
+        </Route>
 
 
       </Routes>
