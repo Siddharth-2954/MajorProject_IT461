@@ -16,11 +16,13 @@ export default function AdminLayout() {
   const location = useLocation();
   const { user } = useContext(AuthContext);
 
-  const selectedKey = location.pathname.startsWith("/admin/students-list")
-    ? "students"
-    : location.pathname.startsWith("/admin/courses")
-      ? "courses"
-      : "dashboard";
+  // Determine which menu item should be active based on the current path
+  let selectedKey = "dashboard";
+  if (location.pathname.startsWith("/admin/students-list")) selectedKey = "students";
+  else if (location.pathname.startsWith("/admin/courses")) selectedKey = "courses";
+  else if (location.pathname.startsWith("/admin/profile")) selectedKey = "profile";
+  else if (location.pathname.startsWith("/admin/security-settings")) selectedKey = "profile";
+  else if (location.pathname === "/admin" || location.pathname === "/admin/") selectedKey = "dashboard";
 
   return (
     <Layout style={{ minHeight: "100vh" }}>

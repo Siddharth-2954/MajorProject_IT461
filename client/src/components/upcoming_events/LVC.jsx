@@ -1,7 +1,8 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Table, Select, Input, Button, Typography, Card, Row, Col } from "antd";
 import { useNavigate } from "react-router-dom";
 import scheduleData from "../../data/scheduleData";
+const API_BASE = (import.meta && import.meta.env && import.meta.env.VITE_API_URL) || 'http://localhost:8000';
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
@@ -14,9 +15,37 @@ export default function LVC() {
   const [subjectFilter, setSubjectFilter] = useState("");
   const [speakerFilter, setSpeakerFilter] = useState("");
   const [searchText, setSearchText] = useState("");
+  const [admins, setAdmins] = useState([]);
+
+  useEffect(() => {
+    let mounted = true;
+    async function loadAdmins() {
+      try {
+        const res = await fetch(API_BASE + '/auth/admins');
+        if (!res.ok) return;
+        const json = await res.json();
+        if (mounted && json && Array.isArray(json.admins)) {
+          setAdmins(json.admins.map(a => a.displayName || a.username));
+        }
+      } catch (e) {
+        // ignore
+      }
+    }
+    loadAdmins();
+    return () => { mounted = false; };
+  }, []);
+
+  // Map scheduleData to use registered admin names as speakers (cycle if fewer admins)
+  const mappedData = scheduleData.map(item => {
+    if (admins && admins.length > 0) {
+      const idx = (item.key - 1) % admins.length;
+      return { ...item, speaker: admins[idx] };
+    }
+    return item;
+  });
 
   // Filtered data based on dropdowns/search
-  const filteredData = scheduleData.filter((item) => {
+  const filteredData = mappedData.filter((item) => {
     const matchesSubject = subjectFilter
       ? item.subject === subjectFilter
       : true;
@@ -174,7 +203,7 @@ export default function LVC() {
               onChange={(val) => setSpeakerFilter(val)}
               style={{ width: "100%" }}
             >
-              {[...new Set(scheduleData.map((item) => item.speaker))].map(
+              {(admins && admins.length > 0 ? admins : [...new Set(scheduleData.map((item) => item.speaker))]).map(
                 (spk) => (
                   <Option key={spk} value={spk}>
                     {spk}

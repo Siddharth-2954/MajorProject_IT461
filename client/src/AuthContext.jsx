@@ -1,6 +1,6 @@
 import React, { createContext, useState, useEffect } from 'react';
 
-const API_BASE = (import.meta && import.meta.env && import.meta.env.VITE_API_URL) || 'http://localhost:8000';
+const API_BASE = ('http://localhost:8000');
 
 export const AuthContext = createContext({ user: null, setUser: () => {}, logout: () => {} });
 
@@ -16,7 +16,6 @@ export const AuthProvider = ({ children }) => {
   });
 
   useEffect(() => {
-    // persist to localStorage for quick UI state; server is the source of truth
     try {
       if (user) localStorage.setItem('auth_user', JSON.stringify(user));
       else localStorage.removeItem('auth_user');

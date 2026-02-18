@@ -1,5 +1,6 @@
 require('dotenv').config();
 const express = require('express');
+const path = require('path');
 const cors = require('cors');
 const session = require('express-session');
 
@@ -40,6 +41,12 @@ app.use('/auth', require('./routes/auth'));
 
 // Mount students route
 app.use('/students', require('./routes/students'));
+
+// Public announcements
+app.use('/announcements', require('./routes/announcements'));
+
+// Serve uploaded files (announcements attachments)
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Mount admin routes under ADMIN_ROUTE (default /org_admin)
 const adminRoute = process.env.ADMIN_ROUTE || '/admin';

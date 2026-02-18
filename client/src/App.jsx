@@ -47,6 +47,13 @@ import MCQDashboard from "./components/Students/MCQDashboard";
 import AdminHome from "./components/Admins/AdminHome";
 import AdminLayout from "./components/Admins/AdminLayout";
 import StudentsList from "./components/Admins/StudentsList";
+import AdminLogin from "./components/Admins/AdminLogin";
+import AdminProfile from "./components/Admins/AdminProfile";
+import AdminSecuritySettings from "./components/Admins/AdminSecuritySettings";
+import AccountActivity from "./components/Admins/AccountActivity";
+import AdminAnnouncements from "./components/Admins/AdminAnnouncements";
+import AdminAnnouncementsLMS from "./components/Admins/AdminAnnouncementsLMS";
+import AdminAnnouncementsExam from "./components/Admins/AdminAnnouncementsExam";
 import { AuthContext } from "./AuthContext";
 
 const { Title } = Typography;
@@ -142,13 +149,18 @@ export default function App() {
         <Route path="/download-notes" element={<ProtectedRoute><DownloadNotes/></ProtectedRoute>} />
         <Route path="/mcq-dashboard" element={<ProtectedRoute><MCQDashboard/></ProtectedRoute>} />
 
-        {/* Admin dashboard routes (session-based, side panel persists) */}
+
+        <Route path="/admin/!login" element={<AdminLogin/>} />
         <Route path="/admin" element={<ProtectedRoute><AdminLayout/></ProtectedRoute>}>
           <Route index element={<AdminHome/>} />
           <Route path="students-list" element={<StudentsList/>} />
+          <Route path="announcements" element={<AdminAnnouncements/>} />
+          <Route path="announcements/lms" element={<AdminAnnouncementsLMS/>} />
+          <Route path="announcements/exam" element={<AdminAnnouncementsExam/>} />
+          <Route path="profile" element={<AdminProfile/>} />
+          <Route path="security-settings" element={<AdminSecuritySettings/>} />
+          <Route path="profile/account-activity" element={<AccountActivity/>} />
         </Route>
-
-
       </Routes>
 
       <ScrollTopButton />

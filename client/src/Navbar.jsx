@@ -7,7 +7,8 @@ const Navbar = () => {
   const location = useLocation();
   const { user, authLoading, logout } = useContext(AuthContext);
 
-  
+  // Consider admin logged-in when `user.username` exists (new admin shape)
+  const isAdminUser = !!(user && (user.username || user.isAdmin || (user.registrationId && String(user.registrationId).startsWith("WRO"))));
 
   const isActive = (path) => {
     if (!location || !location.pathname) return false;
@@ -20,7 +21,7 @@ const Navbar = () => {
         <div className="text-lg font-semibold text-blue-700">LMS</div>
 
         <div className="ml-auto flex items-center gap-6">
-          {String(location.pathname || '').startsWith('/admin') ? (
+          {String(location.pathname || '').startsWith('/admin') && isAdminUser ? (
             <>
               <div className="hidden md:flex items-center gap-4">
                 {/** admin home: only active when exactly on /admin; on subroutes show black text */}
@@ -29,6 +30,12 @@ const Navbar = () => {
                   className={`text-sm ${location.pathname === '/admin' ? 'text-blue-600 font-semibold' : 'text-gray-700 hover:text-blue-600'}`}
                 >
                   Home
+                </Link>
+                <Link
+                  to={'/admin/announcements'}
+                  className={`text-sm ${isActive('/admin/announcements') ? 'text-blue-600 font-semibold' : 'text-gray-700 hover:text-blue-600'}`}
+                >
+                  Announcement
                 </Link>
                 <button
                   type="button"
