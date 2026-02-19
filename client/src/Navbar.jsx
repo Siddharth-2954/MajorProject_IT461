@@ -7,7 +7,6 @@ const Navbar = () => {
   const location = useLocation();
   const { user, authLoading, logout } = useContext(AuthContext);
 
-  // Consider admin logged-in when `user.username` exists (new admin shape)
   const isAdminUser = !!(user && (user.username || user.isAdmin || (user.registrationId && String(user.registrationId).startsWith("WRO"))));
 
   const isActive = (path) => {
@@ -56,7 +55,7 @@ const Navbar = () => {
               <div className="flex items-center gap-3">
                 <button
                   type="button"
-                  onClick={async () => { try { await logout(); } catch (e) {} navigate('/'); }}
+                  onClick={async () => { try { await logout(); } catch (e) {} window.location.href = 'http://localhost:5173/admin/!login'; }}
                   className="px-4 py-2 rounded-md bg-red-600 text-white text-sm font-medium hover:bg-red-700 transition-colors"
                 >
                   Logout

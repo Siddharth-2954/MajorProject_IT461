@@ -1,5 +1,4 @@
 import React, { useEffect, useState, useContext } from 'react';
-import ProfileSidebar from './ProfileSidebar';
 import { AuthContext } from '../../AuthContext';
 import { PlusOutlined, DeleteOutlined } from '@ant-design/icons';
 
@@ -73,10 +72,9 @@ export default function AdminAnnouncementsLMS() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="max-w-6xl mx-auto py-8 px-4 grid grid-cols-1 md:grid-cols-4 gap-6">
-        <ProfileSidebar displayName={displayName} email={email} />
+      <div className="max-w-6xl mx-auto py-8 px-4">
 
-        <main className="col-span-1 md:col-span-3">
+        <main className="w-full">
           <div className="bg-white rounded-lg shadow">
             <div className="p-6 border-b flex items-center justify-between">
               <div>
@@ -115,20 +113,38 @@ export default function AdminAnnouncementsLMS() {
 
               {items.length === 0 && <div className="text-sm text-gray-500">No announcements created yet.</div>}
 
-              {items.map(it => (
-                <div key={it.id} className="border rounded p-4 bg-white">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <div className="font-semibold">{it.title}</div>
-                      <div className="text-xs text-gray-500">{new Date(it.ts).toLocaleString()} • {it.author}</div>
+              {items.map(it => {
+                const adminName = (it.admin && (it.admin.firstName || it.admin.lastName))
+                  ? `${it.admin.firstName || ''}${it.admin.firstName && it.admin.lastName ? ' ' : ''}${it.admin.lastName || ''}`.trim()
+                  : null;
+                const attachmentUrl = it.attachment_url || it.attachment || null;
+                return (
+                  <div key={it.id} className="border rounded p-4 bg-white">
+                    <div className="flex items-start justify-between">
+                      <div className="pr-4 flex-1 min-w-0">
+                        <div className="font-semibold text-lg truncate">{it.title}</div>
+                        <div className="text-xs text-gray-500">
+                          {new Date(it.ts).toLocaleString()}
+                          {adminName ? ` • By: ${adminName}` : ''}
+                        </div>
+                      </div>
+                      <div>
+                        <button onClick={() => handleDelete(it.id)} className="text-red-600 hover:text-red-800"><DeleteOutlined /></button>
+                      </div>
                     </div>
-                    <div>
-                      <button onClick={() => handleDelete(it.id)} className="text-red-600 hover:text-red-800"><DeleteOutlined /></button>
-                    </div>
+                    {it.body && (
+                      <div className="mt-3 text-gray-700" style={{ overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
+                        {it.body}
+                      </div>
+                    )}
+                    {attachmentUrl && (
+                      <div className="mt-3">
+                        <a href={attachmentUrl} target="_blank" rel="noreferrer" className="text-blue-600">Download attachment</a>
+                      </div>
+                    )}
                   </div>
-                  {it.body && <div className="mt-3 text-gray-700">{it.body}</div>}
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </main>

@@ -66,7 +66,7 @@ async function getAnnouncementsByType(type, limit = 100) {
     SELECT a.id, a.type, a.title, a.body, a.author, a.admin_username, ad.firstName AS admin_firstName, ad.lastName AS admin_lastName, a.attachment, a.ts
     FROM announcements a
     LEFT JOIN admins ad ON a.admin_username = ad.username
-    WHERE a.type = ?
+    WHERE LOWER(TRIM(a.type)) = LOWER(TRIM(?))
     ORDER BY a.ts DESC
     LIMIT ${lim}
   `;
