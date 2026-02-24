@@ -45,6 +45,9 @@ app.use('/students', require('./routes/students'));
 // Public announcements
 app.use('/announcements', require('./routes/announcements'));
 
+// Public study materials listing
+app.use('/study-materials', require('./routes/studyMaterials'));
+
 // Serve uploaded files (announcements attachments)
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 

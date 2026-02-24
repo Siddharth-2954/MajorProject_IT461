@@ -52,6 +52,18 @@ export default function ProfileSidebar({ displayName, email }) {
             <span className="text-gray-400">›</span>
           </div>
         </Link>
+
+        <Link to="/admin/study-materials" className="block">
+          <div className="px-6 py-3 flex items-center justify-between hover:bg-gray-50 cursor-pointer">
+            <div className="flex items-center">
+              <div className="w-8 h-8 rounded bg-gray-100 flex items-center justify-center mr-3">
+                <span className="text-gray-600 text-sm">📚</span>
+              </div>
+              <span className="text-gray-700">Study Materials</span>
+            </div>
+            <span className="text-gray-400">›</span>
+          </div>
+        </Link>
       </div>
 
       <div className="p-6 border-t border-gray-100 mt-auto">

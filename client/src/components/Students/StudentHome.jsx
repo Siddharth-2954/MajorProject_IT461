@@ -1,19 +1,21 @@
 import React, { useEffect, useState } from "react";
 import { UserOutlined, VideoCameraOutlined, PlayCircleOutlined, MessageOutlined, DownloadOutlined } from "@ant-design/icons";
-import { announcements } from '../../data/announcements';
 import { Card } from "antd";
 import { useNavigate } from "react-router-dom";
 
 const defaultBg =
 	"https://images.unsplash.com/photo-1503264116251-35a269479413?auto=format&fit=crop&w=1400&q=80";
 
+const API_BASE = 'http://localhost:8000';
+
 export default function StudentHome({ id }) {
 	const [user, setUser] = useState(null);
+	const [announcements, setAnnouncements] = useState([]);
 
 	useEffect(() => {
 		const fetchUser = async () => {
 			try {
-				const res = await fetch('http://localhost:8000/students/me', { credentials: 'include' });
+				const res = await fetch(API_BASE + '/students/me', { credentials: 'include' });
 				if (res.ok) {
 					const json = await res.json();
 					if (json && json.authenticated && json.user) setUser(json.user);
@@ -23,13 +25,62 @@ export default function StudentHome({ id }) {
 			}
 		};
 		fetchUser();
+
+		const fetchAnnouncements = async () => {
+			try {
+				const res = await fetch(API_BASE + '/announcements');
+				if (res.ok) {
+					const json = await res.json();
+					if (json && json.success && json.announcements) {
+						// Map server announcements to display format
+						const mapped = json.announcements.map(a => {
+							// Format date properly - server returns 'ts' field
+							let formattedDate = '';
+							const dateField = a.ts || a.created_at;
+							if (dateField) {
+								try {
+									formattedDate = new Date(dateField).toLocaleDateString('en-GB', {
+										day: '2-digit',
+										month: 'short',
+										year: 'numeric'
+									});
+								} catch (e) {
+									formattedDate = 'N/A';
+								}
+							}
+							
+							// Get author name from admin info or author field
+							let authorName = 'Admin';
+							if (a.admin && (a.admin.firstName || a.admin.lastName)) {
+								authorName = `${a.admin.firstName || ''} ${a.admin.lastName || ''}`.trim();
+							} else if (a.author && !a.author.includes('@') && a.author.length < 20) {
+								authorName = a.author;
+							}
+							
+							return {
+								id: a.id,
+								title: a.title || 'Untitled',
+								body: a.body || '',
+								date: formattedDate,
+								author: authorName,
+								type: a.type || 'lms',
+								attachment_url: a.attachment_url || null,
+							};
+						});
+						setAnnouncements(mapped);
+					}
+				}
+			} catch (e) {
+				console.error('Failed to fetch announcements:', e);
+			}
+		};
+		fetchAnnouncements();
 	}, []);
 	const navigate = useNavigate();
 	const bg = defaultBg;
 
 	const getAnnouncementRoute = (a) => {
-		const txt = (a.title + ' ' + (a.body || '')).toLowerCase();
-		if (/\b(mock|test|exam)\b/.test(txt)) return '/announcements/exam';
+		if (a.type === 'exam') return '/announcements/exam';
 		return '/announcements/lms';
 	};
 
@@ -221,9 +272,9 @@ export default function StudentHome({ id }) {
 								onKeyDown={(e) => e.key === 'Enter' && navigate(`${getAnnouncementRoute(a)}/${a.id}`)}
 								style={{ cursor: 'pointer', padding: 12, borderRadius: 6, border: '1px solid #f0f0f0', marginBottom: 10, background: '#fafafa' }}
 							>
-								<div style={{ fontWeight: 600, color: '#0b5cff', fontSize: 16 }}>{a.title}</div>
-								<div style={{ color: '#666', fontSize: 13, margin: '6px 0' }}>{a.body}</div>
-								<div style={{ fontSize: 12, color: '#999' }}>{a.date} • {a.author}</div>
+								<div style={{ fontWeight: 600, color: '#0b5cff', fontSize: 16, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', wordBreak: 'break-word' }}>{a.title}</div>
+								<div style={{ color: '#666', fontSize: 13, margin: '6px 0', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', wordBreak: 'break-word' }}>{a.body}</div>
+								<div style={{ fontSize: 12, color: '#999', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.date}</div>
 							</div>
 						))}
 					</div>
@@ -231,7 +282,7 @@ export default function StudentHome({ id }) {
 					{/* Right: All recent announcements in condensed list */}
 					<div style={{ padding: '1rem', border: '1px solid #e6e6e6', borderRadius: 8, background: '#fff' }}>
 						<strong style={{ display: 'block', marginBottom: 6 }}>All Recent Announcements</strong>
-						<div style={{ display: 'grid', gap: 8 }}>
+						<div style={{ display: 'grid', gap: 8, maxHeight: '400px', overflowY: 'auto', overflowX: 'hidden' }}>
 							{announcements.map(a => (
 								<div
 									key={a.id}
@@ -239,10 +290,10 @@ export default function StudentHome({ id }) {
 									tabIndex={0}
 									onClick={() => navigate(`${getAnnouncementRoute(a)}/${a.id}`)}
 									onKeyDown={(e) => e.key === 'Enter' && navigate(`${getAnnouncementRoute(a)}/${a.id}`)}
-									style={{ cursor: 'pointer', padding: 10, borderRadius: 6, border: '1px solid #f5f5f5' }}
+									style={{ cursor: 'pointer', padding: 10, borderRadius: 6, border: '1px solid #f5f5f5', minWidth: 0 }}
 								>
-									<div style={{ fontWeight: 600, color: '#0b5cff', fontSize: 14 }}>{a.title}</div>
-									<div style={{ color: '#777', fontSize: 12 }}>{a.date}</div>
+									<div style={{ fontWeight: 600, color: '#0b5cff', fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', wordBreak: 'break-word' }}>{a.title}</div>
+									<div style={{ color: '#777', fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.date}</div>
 								</div>
 							))}
 						</div>

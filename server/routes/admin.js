@@ -37,6 +37,7 @@ router.post('/save-activity', requireAdminSession, async (req, res) => {
 
 // Admin announcements management (allow file upload attachments)
 const announcementController = require('../controllers/announcementController');
+const studyMaterialController = require('../controllers/studyMaterialController');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
@@ -56,6 +57,36 @@ const upload = multer({ storage });
 router.post('/announcements', requireAdminSession, upload.single('attachment'), announcementController.createAdmin);
 router.get('/announcements', requireAdminSession, announcementController.listAdmin);
 router.delete('/announcements/:id', requireAdminSession, announcementController.deleteAdmin);
+
+// Study materials upload (PDF only)
+const STUDY_UPLOAD_DIR = path.join(__dirname, '..', 'uploads', 'study-materials');
+try { fs.mkdirSync(STUDY_UPLOAD_DIR, { recursive: true }); } catch (e) {}
+const studyStorage = multer.diskStorage({
+	destination: function (req, file, cb) { cb(null, STUDY_UPLOAD_DIR); },
+	filename: function (req, file, cb) {
+		const safe = Date.now() + '-' + file.originalname.replace(/[^a-zA-Z0-9._-]/g, '_');
+		cb(null, safe);
+	}
+});
+const uploadStudy = multer({ storage: studyStorage });
+
+router.post('/study-materials', requireAdminSession, uploadStudy.single('file'), studyMaterialController.createAdmin);
+router.get('/study-materials', requireAdminSession, studyMaterialController.listAdmin);
+
+// Fix legacy study materials with null subjects
+router.post('/fix-study-subjects', requireAdminSession, async (req, res) => {
+	try {
+		const pool = require('../config/database');
+		// Update null subjects to 'Accounting' as default
+		const [result] = await pool.execute(
+			"UPDATE study_materials SET subject = 'Accounting' WHERE subject IS NULL OR subject = ''"
+		);
+		res.json({ success: true, updated: result.affectedRows });
+	} catch (e) {
+		console.error('Fix subjects error:', e);
+		res.status(500).json({ error: 'Failed to fix subjects' });
+	}
+});
 
 // Protected admin endpoints
 router.get('/me', requireAdminSession, adminController.me);

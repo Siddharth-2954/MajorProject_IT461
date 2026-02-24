@@ -46,6 +46,7 @@ import DownloadNotes from "./components/Students/DownloadNotes";
 import MCQDashboard from "./components/Students/MCQDashboard";
 import AdminHome from "./components/Admins/AdminHome";
 import AdminLayout from "./components/Admins/AdminLayout";
+import StudyMaterialViewer from "./components/StudyMaterialViewer";
 import StudentsList from "./components/Admins/StudentsList";
 import AdminLogin from "./components/Admins/AdminLogin";
 import AdminProfile from "./components/Admins/AdminProfile";
@@ -54,6 +55,7 @@ import AccountActivity from "./components/Admins/AccountActivity";
 import AdminAnnouncements from "./components/Admins/AdminAnnouncements";
 import AdminAnnouncementsLMS from "./components/Admins/AdminAnnouncementsLMS";
 import AdminAnnouncementsExam from "./components/Admins/AdminAnnouncementsExam";
+import StudyMaterialsAdmin from "./components/Admins/StudyMaterialsAdmin";
 import { AuthContext } from "./AuthContext";
 
 const { Title } = Typography;
@@ -106,6 +108,7 @@ export default function App() {
         <Route path="/study-materials/intermediate" element={<StudyMaterialIntermediate />} />
         <Route path="/study-materials/final" element={<StudyMaterialFinal />} />
         <Route path="/study-materials/self-paced" element={<StudyMaterialSelfPaced />} />
+        {/* Viewer for individual uploaded PDFs (admin-protected) */}
 
         {/* Upcoming Event Routes */}
         <Route path="/events" element={<UpcomingEventHome />} />
@@ -160,6 +163,8 @@ export default function App() {
           <Route path="profile" element={<AdminProfile/>} />
           <Route path="security-settings" element={<AdminSecuritySettings/>} />
           <Route path="profile/account-activity" element={<AccountActivity/>} />
+          <Route path="study-materials" element={<StudyMaterialsAdmin/>} />
+          <Route path="uploads/study-materials/:filename" element={<StudyMaterialViewer/>} />
         </Route>
       </Routes>
 

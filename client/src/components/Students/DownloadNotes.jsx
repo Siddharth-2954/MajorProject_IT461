@@ -1,12 +1,14 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect, useContext } from 'react';
 import { List, Button, Typography, Card, Table, Row, Col, Space, Tag, Select, Input, Badge, Modal } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import { DownloadOutlined } from '@ant-design/icons';
-import { SUBJECTS, sampleNotes } from '../../data/notesData';
+import { SUBJECTS } from '../../data/notesData';
+import { AuthContext } from '../../AuthContext';
 
 const { Title, Text } = Typography;
 
 const defaultBg = 'https://images.unsplash.com/photo-1503264116251-35a269479413?auto=format&fit=crop&w=1400&q=80';
+const API_BASE = 'http://localhost:8000';
 
 export default function DownloadNotes() {
 	const [selectedSubject, setSelectedSubject] = useState('All');
@@ -14,13 +16,23 @@ export default function DownloadNotes() {
 	const [speakerFilter, setSpeakerFilter] = useState(null);
 	const [searchQuery, setSearchQuery] = useState('');
 
-	const speakers = useMemo(() => Array.from(new Set(sampleNotes.map(s => s.speaker))), []);
-	const types = useMemo(() => Array.from(new Set(sampleNotes.map(s => s.type))), []);
+	const [materials, setMaterials] = useState([]);
+
+	const { user } = useContext(AuthContext);
+	const currentUserName = user ? (user.displayName || `${user.firstName || ''} ${user.lastName || ''}`.trim()) : null;
+
+	const speakers = useMemo(() => Array.from(new Set(materials.map(s => s.speaker))), [materials]);
+	const types = useMemo(() => Array.from(new Set(materials.map(s => s.type))), [materials]);
 	const subjectCounts = useMemo(() => {
 		const m = {};
-		sampleNotes.forEach(n => { m[n.subject] = (m[n.subject] || 0) + 1; });
+		materials.forEach(n => {
+			const subject = n.subject || 'General';
+			// Match subject case-insensitively to SUBJECTS array
+			const matchedSubject = SUBJECTS.find(s => s.toLowerCase() === subject.toLowerCase()) || subject;
+			m[matchedSubject] = (m[matchedSubject] || 0) + 1;
+		});
 		return m;
-	}, []);
+	}, [materials]);
 
 	const navigate = useNavigate();
 
@@ -32,9 +44,47 @@ export default function DownloadNotes() {
 		return () => clearTimeout(t);
 	}, []);
 
+	// fetch materials from admin endpoint
+	useEffect(() => {
+		let mounted = true;
+		async function load() {
+				try {
+					const res = await fetch(API_BASE + '/study-materials');
+					if (res.ok) {
+						const json = await res.json();
+					// map server materials to table shape
+					const mapped = (json || []).map(m => ({
+						id: m.id || m._id,
+						title: m.topic || m.fileName || 'Untitled',
+						topic: m.topic || m.fileName || 'Untitled',
+						speaker: m.uploaderName || 'Admin',
+						date: m.date ? new Date(m.date).toISOString().split('T')[0] : '',
+						type: m.category || (m.fileType || 'PDF'),
+						href: m.fileUrl ? (m.fileUrl.startsWith('http') ? m.fileUrl : API_BASE + m.fileUrl) : (m.fileName ? (API_BASE + '/uploads/study-materials/' + encodeURIComponent(m.fileName)) : ''),
+						subject: m.subject || 'General'
+					}));
+						if (mounted) setMaterials(mapped);
+				} else {
+					if (mounted) setMaterials([]);
+				}
+			} catch (e) {
+				console.error(e);
+				if (mounted) setMaterials([]);
+			}
+		}
+		load();
+		return () => { mounted = false; };
+	}, []);
+
 	const filtered = useMemo(() => {
-		let data = sampleNotes;
-		if (selectedSubject && selectedSubject !== 'All') data = data.filter((n) => n.subject === selectedSubject);
+		let data = materials;
+		if (selectedSubject && selectedSubject !== 'All') {
+			// Case-insensitive subject filtering
+			data = data.filter((n) => {
+				const subject = n.subject || 'General';
+				return subject.toLowerCase() === selectedSubject.toLowerCase();
+			});
+		}
 		if (typeFilter) data = data.filter((n) => n.type === typeFilter);
 		if (speakerFilter) data = data.filter((n) => n.speaker === speakerFilter);
 		if (searchQuery && searchQuery.trim()) {
@@ -42,7 +92,7 @@ export default function DownloadNotes() {
 			data = data.filter(n => (n.title + ' ' + n.topic + ' ' + n.subject).toLowerCase().includes(q));
 		}
 		return data;
-	}, [selectedSubject, typeFilter, speakerFilter, searchQuery]);
+	}, [selectedSubject, typeFilter, speakerFilter, searchQuery, materials]);
 
 	const columns = [
 		{ title: 'Title', dataIndex: 'title', key: 'title' },
@@ -134,7 +184,7 @@ export default function DownloadNotes() {
 									}}
 								>
 									<span>{s}</span>
-									<Badge style={{ backgroundColor: selectedSubject === s ? '#fff' : undefined, color: selectedSubject === s ? '#1890ff' : undefined }} />
+									<Badge count={subjectCounts[s] || 0} />
 								</Button>
 							))}
 						</Space>

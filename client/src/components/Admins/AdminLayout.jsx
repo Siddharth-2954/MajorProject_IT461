@@ -4,6 +4,7 @@ import { Layout, Menu, Avatar } from "antd";
 import {
   BarChartOutlined,
   TeamOutlined,
+    DownloadOutlined,
   BookOutlined,
   UserOutlined,
 } from "@ant-design/icons";
@@ -20,6 +21,7 @@ export default function AdminLayout() {
   let selectedKey = "dashboard";
   if (location.pathname.startsWith("/admin/students-list")) selectedKey = "students";
   else if (location.pathname.startsWith("/admin/courses")) selectedKey = "courses";
+  else if (location.pathname.startsWith("/admin/study-materials") || location.pathname.startsWith("/admin/uploads/study-materials")) selectedKey = "study";
   else if (location.pathname.startsWith("/admin/profile")) selectedKey = "profile";
   else if (location.pathname.startsWith("/admin/security-settings")) selectedKey = "profile";
   else if (location.pathname === "/admin" || location.pathname === "/admin/") selectedKey = "dashboard";
@@ -52,6 +54,13 @@ export default function AdminLayout() {
             onClick={() => navigate("/admin/courses")}
           >
             Courses
+          </Menu.Item>
+          <Menu.Item
+            key="study"
+            icon={<DownloadOutlined />}
+            onClick={() => navigate("/admin/study-materials")}
+          >
+            Study Materials
           </Menu.Item>
           <Menu.Item
             key="profile"
