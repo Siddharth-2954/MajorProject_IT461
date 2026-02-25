@@ -8,6 +8,7 @@ const Navbar = () => {
   const { user, authLoading, logout } = useContext(AuthContext);
 
   const isAdminUser = !!(user && (user.username || user.isAdmin || (user.registrationId && String(user.registrationId).startsWith("WRO"))));
+  const isSuperAdmin = !!(user && user.role === 'super_admin');
 
   const isActive = (path) => {
     if (!location || !location.pathname) return false;
@@ -20,13 +21,13 @@ const Navbar = () => {
         <div className="text-lg font-semibold text-blue-700">LMS</div>
 
         <div className="ml-auto flex items-center gap-6">
-          {String(location.pathname || '').startsWith('/admin') && isAdminUser ? (
+          {(String(location.pathname || '').startsWith('/admin') && isAdminUser) || (String(location.pathname || '').startsWith('/super-admin') && isSuperAdmin) ? (
             <>
               <div className="hidden md:flex items-center gap-4">
-                {/** admin home: only active when exactly on /admin; on subroutes show black text */}
+                {/** admin/super-admin home: only active when exactly on /admin or /super-admin; on subroutes show black text */}
                 <Link
-                  to={'/admin'}
-                  className={`text-sm ${location.pathname === '/admin' ? 'text-blue-600 font-semibold' : 'text-gray-700 hover:text-blue-600'}`}
+                  to={String(location.pathname || '').startsWith('/super-admin') ? '/super-admin' : '/admin'}
+                  className={`text-sm ${(location.pathname === '/admin' || location.pathname === '/super-admin') ? 'text-blue-600 font-semibold' : 'text-gray-700 hover:text-blue-600'}`}
                 >
                   Home
                 </Link>
@@ -38,15 +39,24 @@ const Navbar = () => {
                 </Link>
                 <button
                   type="button"
-                  onClick={() => navigate('/events/lvc')}
-                  className={`text-sm ${isActive('/events/lvc') ? 'text-blue-600 font-semibold' : 'text-gray-700 hover:text-blue-600'}`}
+                  onClick={() => navigate(isSuperAdmin ? '/super-admin/lvc' : '/events/lvc')}
+                  className={`text-sm ${isActive(isSuperAdmin ? '/super-admin/lvc' : '/events/lvc') ? 'text-blue-600 font-semibold' : 'text-gray-700 hover:text-blue-600'}`}
                 >
                   Schedule LVC
                 </button>
+                {isSuperAdmin && (
+                  <button
+                    type="button"
+                    onClick={() => navigate('/super-admin/subjects')}
+                    className={`text-sm ${isActive('/super-admin/subjects') ? 'text-blue-600 font-semibold' : 'text-gray-700 hover:text-blue-600'}`}
+                  >
+                    Subjects
+                  </button>
+                )}
                 <button
                   type="button"
-                  onClick={() => navigate('/events/lvrc')}
-                  className={`text-sm ${isActive('/events/lvrc') ? 'text-blue-600 font-semibold' : 'text-gray-700 hover:text-blue-600'}`}
+                  onClick={() => navigate(isSuperAdmin ? '/super-admin/lvrc' : '/events/lvrc')}
+                  className={`text-sm ${isActive(isSuperAdmin ? '/super-admin/lvrc' : '/events/lvrc') ? 'text-blue-600 font-semibold' : 'text-gray-700 hover:text-blue-600'}`}
                 >
                   Schedule LVRC
                 </button>

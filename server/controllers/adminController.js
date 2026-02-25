@@ -26,6 +26,55 @@ exports.login = async (req, res) => {
         .json({ success: false, error: "username and password are required" });
 
     try {
+      // First check if this is the Super Admin from environment variables
+      const superAdminUsername = process.env.SUPER_ADMIN_USERNAME;
+      const superAdminPassword = process.env.SUPER_ADMIN_PASSWORD;
+      
+      if (superAdminUsername && superAdminPassword && 
+          username === superAdminUsername && password === superAdminPassword) {
+        // Super Admin login (from env - not in database)
+        const superAdmin = {
+          username: superAdminUsername,
+          firstName: 'Super',
+          lastName: 'Admin',
+          dob: null,
+          role: 'super_admin',
+          status: 'active',
+        };
+        
+        // Set session for super admin
+        if (req.session)
+          req.session.admin = superAdmin;
+        
+        // Record login activity in audit trail
+        try {
+          const ip = (req.headers['x-forwarded-for'] || req.connection.remoteAddress || req.ip || '').split(',')[0].trim();
+          const ua = req.headers['user-agent'] || '';
+          
+          await adminModel.ensureAuditTable();
+          if (adminModel.insertAuditLog) {
+            await adminModel.insertAuditLog({
+              actor_username: superAdmin.username,
+              actor_role: 'super_admin',
+              action: 'LOGIN',
+              target_type: 'session',
+              target_id: superAdmin.username,
+              details: { browser: ua, source: 'env' },
+              ip
+            });
+          }
+        } catch (e) {
+          console.error('failed to record super admin activity', e && e.message ? e.message : e);
+        }
+        
+        return res.json({
+          success: true,
+          admin: superAdmin,
+          adminRedirect: "/super-admin",
+        });
+      }
+      
+      // If not super admin, check database for regular admin
       await adminModel.ensureTable();
       const admin = await adminModel.findByCredentials(username, password);
       if (!admin)
@@ -40,6 +89,8 @@ exports.login = async (req, res) => {
           firstName: admin.firstName,
           lastName: admin.lastName,
           dob: admin.dob || null,
+          role: admin.role || 'admin',
+          status: admin.status || 'active',
         };
 
       // Record login/activity for this admin (ip + browser) only if admin allows it
@@ -50,6 +101,19 @@ exports.login = async (req, res) => {
         // admin may include save_activity_logs flag from DB (added in findByCredentials)
         const allowSave = admin && (typeof admin.save_activity_logs !== 'undefined' ? !!admin.save_activity_logs : true);
         if (allowSave && adminModel.insertActivity) await adminModel.insertActivity({ username: admin.username, ip, browser });
+        
+        // Also log to audit trail
+        if (adminModel.insertAuditLog) {
+          await adminModel.insertAuditLog({
+            actor_username: admin.username,
+            actor_role: admin.role || 'admin',
+            action: 'LOGIN',
+            target_type: 'session',
+            target_id: admin.username,
+            details: { browser: ua },
+            ip
+          });
+        }
       } catch (e) {
         console.error('failed to record admin activity', e && e.message ? e.message : e);
       }
@@ -61,8 +125,10 @@ exports.login = async (req, res) => {
           firstName: admin.firstName,
           lastName: admin.lastName,
           dob: admin.dob || null,
+          role: admin.role || 'admin',
+          status: admin.status || 'active',
         },
-        adminRedirect: "/admin",
+        adminRedirect: admin.role === 'super_admin' ? "/super-admin" : "/admin",
       });
     } catch (e) {
       console.error("admin login error", e && e.message ? e.message : e);
@@ -148,6 +214,8 @@ exports.me = async (req, res) => {
               lastName: dbAdmin.lastName,
               dob: dbAdmin.dob || null,
               save_activity_logs: typeof dbAdmin.save_activity_logs !== 'undefined' ? !!dbAdmin.save_activity_logs : true,
+              role: dbAdmin.role || 'admin',
+              status: dbAdmin.status || 'active',
             },
           });
         }
@@ -161,6 +229,8 @@ exports.me = async (req, res) => {
           firstName: adminSession.firstName,
           lastName: adminSession.lastName,
           dob: adminSession.dob || null,
+          role: adminSession.role || 'admin',
+          status: adminSession.status || 'active',
         },
       });
     } catch (e) {
@@ -174,7 +244,9 @@ exports.me = async (req, res) => {
           username: adminSession.username,
           firstName: adminSession.firstName,
           lastName: adminSession.lastName,
-          dob: adminSession.dob || null
+          dob: adminSession.dob || null,
+          role: adminSession.role || 'admin',
+          status: adminSession.status || 'active',
         },
       });
     }

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Table, Select, Input, Button, Typography, Card, Row, Col } from "antd";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import scheduleData from "../../data/scheduleData";
 const API_BASE = (import.meta && import.meta.env && import.meta.env.VITE_API_URL) || 'http://localhost:8000';
 import jsPDF from "jspdf";
@@ -11,11 +11,20 @@ const { Option } = Select;
 
 export default function LVC() {
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [subjectFilter, setSubjectFilter] = useState("");
   const [speakerFilter, setSpeakerFilter] = useState("");
   const [searchText, setSearchText] = useState("");
   const [admins, setAdmins] = useState([]);
+  const [allAdmins, setAllAdmins] = useState([]);
+  const [subjects, setSubjects] = useState([]);
+  const [dbSchedules, setDbSchedules] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  const isSuperAdminRoute = location.pathname === '/super-admin/lvc';
+  const isEventsLvcRoute = location.pathname === '/events/lvc';
+  const isDatabaseRoute = isSuperAdminRoute || isEventsLvcRoute;
 
   useEffect(() => {
     let mounted = true;
@@ -35,14 +44,111 @@ export default function LVC() {
     return () => { mounted = false; };
   }, []);
 
+  // Load LVC schedules from database for super admin and events routes
+  useEffect(() => {
+    if (!isDatabaseRoute) return;
+
+    let mounted = true;
+    async function loadSchedules() {
+      try {
+        setLoading(true);
+        // Use public endpoint for /events/lvc, protected endpoint for /super-admin/lvc
+        const endpoint = isEventsLvcRoute ? '/schedules/lvc' : '/super-admin/lvc-schedules';
+        const res = await fetch(API_BASE + endpoint, {
+          credentials: 'include'
+        });
+        const json = await res.json();
+        console.log('LVC schedules loaded:', json);
+        if (mounted && json.success && Array.isArray(json.schedules)) {
+          // Transform database schedules to match table format
+          const transformed = json.schedules.map((item, idx) => ({
+            key: idx + 1,
+            id: item.id,
+            date: item.scheduledDate,
+            subject: item.subjectName || 'Unknown Subject',
+            topic: item.title,
+            speaker: item.instructorName || 'TBD',
+            timing: `${item.startTime} - ${item.endTime}`,
+            description: item.description,
+            meetingLink: item.meetingLink,
+            capacity: item.capacity
+          }));
+          setDbSchedules(transformed);
+        }
+      } catch (e) {
+        console.error('Error loading schedules:', e);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadSchedules();
+    return () => { mounted = false; };
+  }, [isDatabaseRoute, isEventsLvcRoute]);
+
+  // Load all subjects from database for database routes
+  useEffect(() => {
+    if (!isDatabaseRoute) return;
+
+    let mounted = true;
+    async function loadSubjects() {
+      try {
+        const res = await fetch(API_BASE + '/super-admin/subjects', {
+          credentials: 'include'
+        });
+        const json = await res.json();
+        console.log('Subjects loaded:', json);
+        if (mounted && json.success && Array.isArray(json.subjects)) {
+          setSubjects(json.subjects);
+        }
+      } catch (e) {
+        console.error('Error loading subjects:', e);
+      }
+    }
+    loadSubjects();
+    return () => { mounted = false; };
+  }, [isDatabaseRoute]);
+
+  // Load all admins from database for database routes
+  useEffect(() => {
+    if (!isDatabaseRoute) return;
+
+    let mounted = true;
+    async function loadAdminsList() {
+      try {
+        const res = await fetch(API_BASE + '/super-admin/admins', {
+          credentials: 'include'
+        });
+        const json = await res.json();
+        console.log('Admins list loaded:', json);
+        if (mounted && json && Array.isArray(json.admins)) {
+          setAllAdmins(json.admins);
+        }
+      } catch (e) {
+        console.error('Error loading admins:', e);
+      }
+    }
+    loadAdminsList();
+    return () => { mounted = false; };
+  }, [isDatabaseRoute]);
+
   // Map scheduleData to use registered admin names as speakers (cycle if fewer admins)
-  const mappedData = scheduleData.map(item => {
-    if (admins && admins.length > 0) {
+  // Use database schedules for database routes, use scheduleData for regular routes
+  const baseData = isDatabaseRoute ? dbSchedules : scheduleData;
+  const mappedData = baseData.map(item => {
+    if (!isDatabaseRoute && admins && admins.length > 0) {
       const idx = (item.key - 1) % admins.length;
       return { ...item, speaker: admins[idx] };
     }
     return item;
   });
+
+  // Extract unique speakers and subjects from database schedules for filter dropdowns
+  const uniqueSpeakers = isDatabaseRoute
+    ? [...new Set(dbSchedules.map(item => item.speaker).filter(Boolean))]
+    : [];
+  const uniqueSubjectsFromSchedules = isDatabaseRoute
+    ? [...new Set(dbSchedules.map(item => item.subject).filter(Boolean))]
+    : [];
 
   // Filtered data based on dropdowns/search
   const filteredData = mappedData.filter((item) => {
@@ -71,6 +177,11 @@ export default function LVC() {
       title: "Date",
       dataIndex: "date",
       sorter: (a, b) => new Date(a.date) - new Date(b.date),
+      render: (text) => {
+        // Extract only the date part (YYYY-MM-DD) from ISO format or existing date
+        if (!text) return '';
+        return String(text).split('T')[0];
+      },
     },
     {
       title: "Subject",
@@ -83,7 +194,7 @@ export default function LVC() {
       sorter: (a, b) => a.topic.localeCompare(b.topic),
     },
     {
-      title: "Speaker",
+      title: isDatabaseRoute ? "Instructor" : "Speaker",
       dataIndex: "speaker",
       sorter: (a, b) => a.speaker.localeCompare(b.speaker),
     },
@@ -92,21 +203,33 @@ export default function LVC() {
       dataIndex: "timing",
       sorter: (a, b) => a.timing.localeCompare(b.timing),
       render: (text, record) => {
-        // derive session label from start time
-        const m = String(text || "").match(/^(\d{1,2}):(\d{2})\s*([APMapm]{2})/);
-        let label = "";
-        if (m) {
-          let hh = parseInt(m[1], 10);
-          const mm = parseInt(m[2], 10);
-          const ampm = m[3].toUpperCase();
-          if (ampm === "PM" && hh !== 12) hh += 12;
-          if (ampm === "AM" && hh === 12) hh = 0;
-          // determine session: morning (0-11), afternoon (12-15), evening (16+)
-          if (hh < 12) label = "Morning";
-          else if (hh >= 12 && hh < 16) label = "Afternoon";
-          else label = "Evening";
+        if (!isDatabaseRoute) {
+          // Original logic for regular users
+          const m = String(text || "").match(/^(\d{1,2}):(\d{2})\s*([APMapm]{2})/);
+          let label = "";
+          if (m) {
+            let hh = parseInt(m[1], 10);
+            const mm = parseInt(m[2], 10);
+            const ampm = m[3].toUpperCase();
+            if (ampm === "PM" && hh !== 12) hh += 12;
+            if (ampm === "AM" && hh === 12) hh = 0;
+            if (hh < 12) label = "Morning";
+            else if (hh >= 12 && hh < 16) label = "Afternoon";
+            else label = "Evening";
+          }
+          return text + (label ? ` (${label})` : "");
+        } else if (isDatabaseRoute) {
+          // Database format: HH:MM:SS - HH:MM:SS
+          const timeMatch = String(text || "").match(/^(\d{1,2}):(\d{2}):/);
+          let label = "";
+          if (timeMatch) {
+            let hh = parseInt(timeMatch[1], 10);
+            if (hh < 12) label = "Morning";
+            else if (hh >= 12 && hh < 16) label = "Afternoon";
+            else label = "Evening";
+          }
+          return text + (label ? ` (${label})` : "");
         }
-        return text + (label ? ` (${label})` : "");
       },
     },
   ];
@@ -114,25 +237,39 @@ export default function LVC() {
   // Download table as PDF
   const downloadPDF = () => {
     const doc = new jsPDF();
-    const tableColumn = ["#", "Date", "Subject", "Topic", "Speaker", "Timing"];
+    const tableColumn = ["#", "Date", "Subject", "Topic", isDatabaseRoute ? "Instructor" : "Speaker", "Timing"];
     const tableRows = [];
 
     filteredData.forEach((item) => {
       // compute same label for PDF export
       const timingText = (() => {
         const t = item.timing || "";
-        const m = String(t).match(/^(\d{1,2}):(\d{2})\s*([APMapm]{2})/);
-        if (!m) return t;
-        let hh = parseInt(m[1], 10);
-        const mm = parseInt(m[2], 10);
-        const ampm = m[3].toUpperCase();
-        if (ampm === "PM" && hh !== 12) hh += 12;
-        if (ampm === "AM" && hh === 12) hh = 0;
-        let label = "";
-        if (hh < 12) label = "Morning";
-        else if (hh >= 12 && hh < 16) label = "Afternoon";
-        else label = "Evening";
-        return t + (label ? ` (${label})` : "");
+        if (isDatabaseRoute) {
+          // Database format: HH:MM:SS - HH:MM:SS
+          const timeMatch = String(t).match(/^(\d{1,2}):(\d{2}):/);
+          let label = "";
+          if (timeMatch) {
+            let hh = parseInt(timeMatch[1], 10);
+            if (hh < 12) label = "Morning";
+            else if (hh >= 12 && hh < 16) label = "Afternoon";
+            else label = "Evening";
+          }
+          return t + (label ? ` (${label})` : "");
+        } else {
+          // Regular format
+          const m = String(t).match(/^(\d{1,2}):(\d{2})\s*([APMapm]{2})/);
+          if (!m) return t;
+          let hh = parseInt(m[1], 10);
+          const mm = parseInt(m[2], 10);
+          const ampm = m[3].toUpperCase();
+          if (ampm === "PM" && hh !== 12) hh += 12;
+          if (ampm === "AM" && hh === 12) hh = 0;
+          let label = "";
+          if (hh < 12) label = "Morning";
+          else if (hh >= 12 && hh < 16) label = "Afternoon";
+          else label = "Evening";
+          return t + (label ? ` (${label})` : "");
+        }
       })();
 
       const rowData = [
@@ -179,6 +316,11 @@ export default function LVC() {
       {/* Filters */}
       <section className="max-w-6xl mx-auto py-10 px-6">
         <div className="bg-white rounded-lg shadow-lg p-6">
+          {loading && isDatabaseRoute && (
+            <div className="text-center mb-6 text-blue-600">
+              Loading schedules...
+            </div>
+          )}
           <Row gutter={[16, 16]} className="mb-6">
           <Col xs={24} sm={8}>
             <Select
@@ -187,13 +329,19 @@ export default function LVC() {
               onChange={(val) => setSubjectFilter(val)}
               style={{ width: "100%" }}
             >
-              {[...new Set(scheduleData.map((item) => item.subject))].map(
-                (subj) => (
-                  <Option key={subj} value={subj}>
-                    {subj}
-                  </Option>
-                ),
-              )}
+              {isDatabaseRoute
+                ? uniqueSubjectsFromSchedules.map((subj) => (
+                    <Option key={subj} value={subj}>
+                      {subj}
+                    </Option>
+                  ))
+                : [...new Set((scheduleData).map((item) => item.subject))].map(
+                    (subj) => (
+                      <Option key={subj} value={subj}>
+                        {subj}
+                      </Option>
+                    ),
+                  )}
             </Select>
           </Col>
           <Col xs={24} sm={8}>
@@ -203,13 +351,25 @@ export default function LVC() {
               onChange={(val) => setSpeakerFilter(val)}
               style={{ width: "100%" }}
             >
-              {(admins && admins.length > 0 ? admins : [...new Set(scheduleData.map((item) => item.speaker))]).map(
-                (spk) => (
-                  <Option key={spk} value={spk}>
-                    {spk}
-                  </Option>
-                ),
-              )}
+              {isDatabaseRoute
+                ? uniqueSpeakers.map((speaker) => (
+                    <Option key={speaker} value={speaker}>
+                      {speaker}
+                    </Option>
+                  ))
+                : (admins && admins.length > 0
+                    ? admins.map((spk) => (
+                        <Option key={spk} value={spk}>
+                          {spk}
+                        </Option>
+                      ))
+                    : [...new Set((scheduleData).map((item) => item.speaker))].map(
+                        (spk) => (
+                          <Option key={spk} value={spk}>
+                            {spk}
+                          </Option>
+                        ),
+                      ))}
             </Select>
           </Col>
           <Col xs={24} sm={8}>
@@ -226,12 +386,20 @@ export default function LVC() {
           </Button>
 
           {/* Table */}
-          <Table
-            columns={columns}
-            dataSource={filteredData}
-            pagination={{ pageSize: 5 }}
-            bordered
-          />
+          {isDatabaseRoute && dbSchedules.length === 0 && !loading && (
+            <div className="text-center text-gray-500 py-10">
+              No schedules available. Create one from the Subjects page.
+            </div>
+          )}
+          {!(isDatabaseRoute && dbSchedules.length === 0 && !loading) && (
+            <Table
+              columns={columns}
+              dataSource={filteredData}
+              pagination={{ pageSize: 5 }}
+              bordered
+              loading={loading && isDatabaseRoute}
+            />
+          )}
         </div>
       </section>
     </>

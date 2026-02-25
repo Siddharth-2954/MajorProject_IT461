@@ -56,6 +56,9 @@ import AdminAnnouncements from "./components/Admins/AdminAnnouncements";
 import AdminAnnouncementsLMS from "./components/Admins/AdminAnnouncementsLMS";
 import AdminAnnouncementsExam from "./components/Admins/AdminAnnouncementsExam";
 import StudyMaterialsAdmin from "./components/Admins/StudyMaterialsAdmin";
+import SuperAdminHome from "./components/SuperAdmin/SuperAdminHome";
+import SubjectsAdmin from "./components/SuperAdmin/SubjectsAdmin";
+import { SuperAdminRoute } from "./components/SuperAdmin/SuperAdminRoute";
 import { AuthContext } from "./AuthContext";
 
 const { Title } = Typography;
@@ -154,6 +157,30 @@ export default function App() {
 
 
         <Route path="/admin/!login" element={<AdminLogin/>} />
+        
+        {/* Super Admin Routes */}
+        <Route path="/super-admin" element={
+          <SuperAdminRoute>
+            <SuperAdminHome />
+          </SuperAdminRoute>
+        } />
+        <Route path="/super-admin/lvc" element={
+          <SuperAdminRoute>
+            <LVC />
+          </SuperAdminRoute>
+        } />
+        <Route path="/super-admin/lvrc" element={
+          <SuperAdminRoute>
+            <LVRC />
+          </SuperAdminRoute>
+        } />
+        <Route path="/super-admin/subjects" element={
+          <SuperAdminRoute>
+            <SubjectsAdmin />
+          </SuperAdminRoute>
+        } />
+        
+        {/* Regular Admin Routes */}
         <Route path="/admin" element={<ProtectedRoute><AdminLayout/></ProtectedRoute>}>
           <Route index element={<AdminHome/>} />
           <Route path="students-list" element={<StudentsList/>} />

@@ -1,4 +1,5 @@
 const announcementModel = require('../models/announcementModel');
+const adminModel = require('../models/adminModel');
 const path = require('path');
 const fs = require('fs');
 
@@ -37,6 +38,23 @@ exports.createAdmin = async (req, res) => {
     const attachment = req.file ? req.file.filename : null;
     const admin_username = adminSession.username;
     const id = await announcementModel.insertAnnouncement({ type: type || 'lms', title, body, author, attachment, admin_username });
+    
+    // Log to audit trail
+    try {
+      const ip = (req.headers['x-forwarded-for'] || req.connection.remoteAddress || req.ip || '').split(',')[0].trim();
+      await adminModel.insertAuditLog({
+        actor_username: admin_username,
+        actor_role: adminSession.role || 'admin',
+        action: 'CREATE_ANNOUNCEMENT',
+        target_type: 'announcement',
+        target_id: String(id),
+        details: { type, title, hasAttachment: !!attachment },
+        ip
+      });
+    } catch (auditErr) {
+      console.error('Audit log error:', auditErr);
+    }
+    
     return res.json({ success: true, id });
   } catch (e) {
     console.error('announcement create error', e && e.message ? e.message : e);
@@ -84,6 +102,23 @@ exports.deleteAdmin = async (req, res) => {
       }
     }
     const deleted = await announcementModel.deleteAnnouncementById(id);
+    
+    // Log to audit trail
+    try {
+      const ip = (req.headers['x-forwarded-for'] || req.connection.remoteAddress || req.ip || '').split(',')[0].trim();
+      await adminModel.insertAuditLog({
+        actor_username: adminSession.username,
+        actor_role: adminSession.role || 'admin',
+        action: 'DELETE_ANNOUNCEMENT',
+        target_type: 'announcement',
+        target_id: String(id),
+        details: { title: rec ? rec.title : null },
+        ip
+      });
+    } catch (auditErr) {
+      console.error('Audit log error:', auditErr);
+    }
+    
     return res.json({ success: !!deleted });
   } catch (e) {
     console.error('announcement delete admin error', e && e.message ? e.message : e);

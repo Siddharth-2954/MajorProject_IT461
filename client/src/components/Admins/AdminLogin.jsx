@@ -34,6 +34,8 @@ export default function AdminLogin() {
 			}
 
 			const url = API_BASE.replace(/\/$/, "") + "/admin/!login";
+			console.log('Attempting login to:', url);  // Debug log
+			
 			const resp = await fetch(url, {
 				method: "POST",
 				credentials: "include",
@@ -41,12 +43,16 @@ export default function AdminLogin() {
 				body: JSON.stringify({ username, password }),
 			});
 
+			console.log('Response status:', resp.status);  // Debug log
+
 			if (!resp.ok) {
 				const data = await resp.json().catch(() => ({}));
-				throw new Error(data.message || "Login failed");
+				throw new Error(data.error || data.message || "Login failed");
 			}
 
 			const data = await resp.json().catch(() => ({}));
+			console.log('Login response:', data);  // Debug log
+			
 			// update auth context if available
 			if (setUser && data && data.admin) setUser(data.admin);
 
@@ -54,7 +60,8 @@ export default function AdminLogin() {
 			const redirect = (data && data.adminRedirect) || "/admin";
 			navigate(redirect);
 		} catch (err) {
-			setError(err.message || "Login failed");
+			console.error('Login error:', err);  // Debug log
+			setError(err.message || "Failed to connect to server. Please ensure the server is running.");
 		} finally {
 			setLoading(false);
 		}
