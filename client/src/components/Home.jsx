@@ -214,16 +214,14 @@ const Home = () => {
 
     setLoginLoading(true);
     try {
-      // Admins (WRO...) use dedicated /admin/login endpoint
+      // Admins (WRO... or super admin) use dedicated /admin/!login endpoint
       if (isWroAdmin) {
         const adminPayload = {
-          email: values.email,
-          registrationId: values.loginNumber,
-          dob: values.dob,
+          username: values.loginNumber,
           password: values.loginPassword,
         };
 
-        const res = await fetch('http://localhost:8000/admin/login', {
+        const res = await fetch('http://localhost:8000/admin/!login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
@@ -233,7 +231,7 @@ const Home = () => {
         if (res.ok && json.success) {
           message.success('Admin login successful');
           try { setUser(json.admin); } catch (e) {}
-          const redirect = json.adminRedirect || '/admin';
+          const redirect = json.adminRedirect || '/super-admin';
           navigate(redirect);
         } else if (res.status === 401) {
           message.error(json.error || 'Invalid admin credentials');

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import {
   Form,
   DatePicker,
@@ -11,15 +11,49 @@ import {
   Button,
 } from "antd";
 const { Option } = Select;
-import scheduleData from "../../data/scheduleData";
+import dayjs from "dayjs";
+import { AuthContext } from "../../AuthContext";
 
-const defaultBg =
+const API_BASE = (import.meta && import.meta.env && import.meta.env.VITE_API_URL) || 'http://localhost:8000';
+
+const defaultBg = 
   "https://images.unsplash.com/photo-1503264116251-35a269479413?auto=format&fit=crop&w=1400&q=80";
 
 export default function LVC_Feedback() {
+  const { user } = useContext(AuthContext);
   const [form] = Form.useForm();
   const [basicFilled, setBasicFilled] = useState(false);
   const [loadingEvent, setLoadingEvent] = useState(false);
+  const [schedules, setSchedules] = useState([]);
+  const [loadingSchedules, setLoadingSchedules] = useState(true);
+  const [uniqueDates, setUniqueDates] = useState([]);
+  const [availableSessions, setAvailableSessions] = useState([]);
+
+  useEffect(() => {
+    // Fetch all LVC schedules
+    const fetchSchedules = async () => {
+      try {
+        setLoadingSchedules(true);
+        const response = await fetch(`${API_BASE}/schedules/lvc`, {
+          credentials: 'include',
+        });
+        const data = await response.json();
+        if (data.schedules) {
+          setSchedules(data.schedules);
+          // Extract unique dates
+          const dates = [...new Set(data.schedules.map(s => s.scheduledDate))];
+          setUniqueDates(dates.sort());
+        }
+      } catch (err) {
+        console.error('Error fetching schedules:', err);
+        message.error('Failed to load schedules');
+      } finally {
+        setLoadingSchedules(false);
+      }
+    };
+    
+    fetchSchedules();
+  }, []);
 
   const styles = {
     hero: {
@@ -46,49 +80,60 @@ export default function LVC_Feedback() {
     panelHeader: { fontSize: "1.1rem", color: "#1f3a5f", fontWeight: 700 },
   };
 
-  function timeStringTo24(t) {
-    if (!t) return null;
-    const m = String(t).match(/(\d{1,2}):(\d{2})\s*([APMapm]{2})/);
-    if (!m) return null;
-    let hh = parseInt(m[1], 10);
-    const mm = parseInt(m[2], 10);
-    const ampm = m[3].toUpperCase();
-    if (ampm === "PM" && hh !== 12) hh += 12;
-    if (ampm === "AM" && hh === 12) hh = 0;
-    return hh + mm / 60;
+  // Helper function to extract hour from HH:mm:ss format
+  function getHourFromTime(timeStr) {
+    if (!timeStr) return null;
+    const parts = timeStr.split(':');
+    return parseInt(parts[0], 10);
   }
 
-  function sessionMatchesTiming(session, timing) {
-    if (!timing) return false;
-    const parts = String(timing).split("-");
-    const start = parts[0] ? parts[0].trim() : null;
-    const startHour = timeStringTo24(start);
-    if (startHour === null) return false;
-    if (!session) {
-      const h = new Date().getHours();
-      if (h < 12) session = "morning";
-      else if (h < 17) session = "afternoon";
-      else session = "evening";
-    }
-    if (session === "morning") return startHour >= 5 && startHour < 12;
-    if (session === "afternoon") return startHour >= 12 && startHour < 17;
-    if (session === "evening") return startHour >= 17 && startHour < 24;
+  // Check if a schedule's start time matches the selected session
+  function scheduleMatchesSession(schedule, session) {
+    if (!session || !schedule.startTime) return false;
+    const hour = getHourFromTime(schedule.startTime);
+    
+    if (session === 'morning') return hour >= 5 && hour < 12;
+    if (session === 'afternoon') return hour >= 12 && hour < 17;
+    if (session === 'evening') return hour >= 17 && hour < 24;
     return false;
   }
 
+  // Get available sessions for a given date
+  function getAvailableSessionsForDate(dateStr) {
+    const dateSchedules = schedules.filter(s => s.scheduledDate === dateStr);
+    const sessions = new Set();
+    
+    dateSchedules.forEach(schedule => {
+      if (scheduleMatchesSession(schedule, 'morning')) sessions.add('morning');
+      if (scheduleMatchesSession(schedule, 'afternoon')) sessions.add('afternoon');
+      if (scheduleMatchesSession(schedule, 'evening')) sessions.add('evening');
+    });
+    
+    return Array.from(sessions);
+  }
+
+  // Fetch event details based on selected date and session
   async function fetchEventDetails(dateStr, session) {
-    const events = scheduleData.filter((e) => e.date === dateStr);
-    if (!events || events.length === 0) return null;
+    // Filter schedules by date
+    const dateSchedules = schedules.filter(s => s.scheduledDate === dateStr);
+    
+    if (!dateSchedules || dateSchedules.length === 0) {
+      return null;
+    }
+
+    // Filter by session (matching startTime to session)
     let matched = null;
-    if (session)
-      matched = events.find((ev) => sessionMatchesTiming(session, ev.timing));
-    else
-      matched = events.find((ev) => sessionMatchesTiming(undefined, ev.timing));
-    const ev = matched || events[0];
+    if (session) {
+      matched = dateSchedules.find(s => scheduleMatchesSession(s, session));
+    }
+    
+    // If no match found for session, return first schedule of the day
+    const schedule = matched || dateSchedules[0];
+    
     return {
-      paper: ev.subject || "",
-      speaker: ev.speaker || "",
-      topic: ev.topic || "",
+      paper: schedule.subjectName || 'Unknown Subject',
+      speaker: schedule.instructorName || 'Unknown Instructor',
+      topic: schedule.title || '',
     };
   }
 
@@ -98,18 +143,40 @@ export default function LVC_Feedback() {
     const sessionVal = allValues.session || form.getFieldValue("session");
     const hasDate = !!lectureVal;
     const hasSession = !!sessionVal;
-    setBasicFilled(hasDate && hasSession);
-
-    if (!hasDate) return;
-
+    
+    // Check if selected date has a lecture schedule
     let dateStr = "";
-    try {
-      dateStr =
-        typeof lectureVal.format === "function"
-          ? lectureVal.format("YYYY-MM-DD")
-          : String(lectureVal);
-    } catch (e) {
-      dateStr = String(lectureVal);
+    let hasValidDate = false;
+    if (hasDate) {
+      try {
+        dateStr =
+          typeof lectureVal.format === "function"
+            ? lectureVal.format("YYYY-MM-DD")
+            : String(lectureVal);
+        hasValidDate = uniqueDates.includes(dateStr);
+      } catch (e) {
+        dateStr = String(lectureVal);
+      }
+    }
+    
+    // If date changed, update available sessions
+    if (changedValues.lectureDate && hasValidDate) {
+      const sessions = getAvailableSessionsForDate(dateStr);
+      setAvailableSessions(sessions);
+      
+      // Clear session if it's not available for the selected date
+      if (sessionVal && !sessions.includes(sessionVal)) {
+        form.setFieldsValue({ session: undefined, paper: "", speaker: "", topic: "" });
+        setBasicFilled(false);
+        return;
+      }
+    }
+    
+    setBasicFilled(hasDate && hasSession && hasValidDate);
+
+    if (!hasDate || !hasValidDate) {
+      form.setFieldsValue({ paper: "", speaker: "", topic: "" });
+      return;
     }
 
     // clear while loading
@@ -123,18 +190,97 @@ export default function LVC_Feedback() {
             speaker: res.speaker,
             topic: res.topic,
           });
-        else message.info("No event found for selected date");
+        else message.info("No event found for selected date and session");
       })
-      .catch((err) => console.error(err))
+      .catch((err) => {
+        console.error(err);
+        message.error("Error loading event details");
+      })
       .finally(() => setLoadingEvent(false));
   }
 
   function handleSubmit() {
     form
       .validateFields()
-      .then((values) => {
-        console.log("Feedback values:", values);
-        message.success("Feedback submitted. Thank you!");
+      .then(async (values) => {
+        try {
+          const lectureDate = values.lectureDate ? values.lectureDate.format("YYYY-MM-DD") : null;
+          
+          // Find the schedule ID for this date and session
+          const dateSchedules = schedules.filter(s => s.scheduledDate === lectureDate);
+          let scheduleId = null;
+          if (dateSchedules.length > 0) {
+            const matched = dateSchedules.find(s => scheduleMatchesSession(s, values.session));
+            scheduleId = matched ? matched.id : dateSchedules[0].id;
+          }
+
+          if (!scheduleId) {
+            message.error("No schedule found for this date/session. Please reselect the lecture.");
+            return;
+          }
+
+          const derivedName =
+            [user?.firstName, user?.lastName].filter(Boolean).join(" ") ||
+            user?.fullName ||
+            user?.name ||
+            user?.registrationId ||
+            "Unknown";
+
+          const feedbackData = {
+            scheduleId: scheduleId,
+            scheduleType: "lvc",
+            studentId: user?.registrationId || "unknown",
+            studentName: derivedName,
+            studentEmail: user?.email || "",
+            lectureDate: lectureDate,
+            session: values.session,
+            subject: values.paper,
+            instructor: values.speaker,
+            topic: values.topic,
+            quality: values.quality,
+            aligned: values.aligned,
+            explanation: values.explanation,
+            pace: values.pace,
+            interaction: values.interaction,
+            timings: values.timings,
+            av_quality: values.av_quality,
+            technical_issues: values.technical_issues,
+            feedback_ease: values.feedback_ease,
+            escalation_awareness: values.escalation_awareness,
+            escalation_experience: values.escalation_experience,
+            feedback_valued: values.feedback_valued,
+            material_provided: values.material_provided,
+            material_quality: values.material_quality,
+            material_aligned: values.material_aligned,
+            material_suggestions: values.material_suggestions,
+            language_clarity: values.language_clarity,
+            language_preference: values.language_preference,
+            language_suggestions: values.language_suggestions,
+            liked_most: values.liked_most,
+            could_improve: values.could_improve,
+            other_comments: values.other_comments,
+          };
+
+          const response = await fetch(`${API_BASE}/feedbacks`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            credentials: "include",
+            body: JSON.stringify(feedbackData),
+          });
+
+          if (!response.ok) {
+            throw new Error("Failed to submit feedback");
+          }
+
+          message.success("Feedback submitted successfully. Thank you!");
+          form.resetFields();
+          setBasicFilled(false);
+        } catch (err) {
+          console.error("Error submitting feedback:", err);
+          message.error(err.message || "Failed to submit feedback");
+        }
       })
       .catch(() =>
         message.error("Please complete required fields before submitting."),
@@ -176,10 +322,27 @@ export default function LVC_Feedback() {
                       Lecture Date
                     </span>
                   }
-                  rules={[{ required: true }]}
+                  rules={[
+                    { required: true, message: "Please select a date" },
+                    {
+                      validator: (_, value) => {
+                        if (!value) return Promise.resolve();
+                        const dateStr = value.format("YYYY-MM-DD");
+                        if (!uniqueDates.includes(dateStr)) {
+                          return Promise.reject(
+                            new Error("This date does not have any lecture schedule. Please select a date with scheduled lectures.")
+                          );
+                        }
+                        return Promise.resolve();
+                      },
+                    },
+                  ]}
                   style={{ flex: 1, marginBottom: 0 }}
                 >
-                  <DatePicker style={{ width: "100%" }} />
+                  <DatePicker 
+                    style={{ width: "100%" }}
+                    loading={loadingSchedules}
+                  />
                 </Form.Item>
 
                 <Form.Item
@@ -189,7 +352,24 @@ export default function LVC_Feedback() {
                       Session
                     </span>
                   }
-                  rules={[{ required: true }]}
+                  rules={[
+                    { required: true, message: "Please select a session" },
+                    {
+                      validator: (_, value) => {
+                        if (!value) return Promise.resolve();
+                        const lectureVal = form.getFieldValue("lectureDate");
+                        if (!lectureVal) return Promise.resolve();
+                        
+                        const dateStr = lectureVal.format("YYYY-MM-DD");
+                        if (!availableSessions.includes(value)) {
+                          return Promise.reject(
+                            new Error("No event is scheduled in this time slot for the selected date.")
+                          );
+                        }
+                        return Promise.resolve();
+                      },
+                    },
+                  ]}
                   style={{ flex: 1, marginBottom: 0 }}
                 >
                   <Select placeholder="Select session">
@@ -201,30 +381,30 @@ export default function LVC_Feedback() {
               </div>
 
               {basicFilled && (
-                <div style={{ marginTop: 16, display: "grid", gap: 12 }}>
+                  <div style={{ marginTop: 16, display: "grid", gap: 12 }}>
                   <div style={{ marginBottom: 8 }}>
                     <div style={{ display: "flex", gap: 12 }}>
                       <Form.Item
                         name="paper"
                         label={
                           <span style={{ color: "#333", fontWeight: 600 }}>
-                            Paper
+                            Subject
                           </span>
                         }
                         style={{ flex: 1, marginBottom: 0 }}
                       >
-                        <Input placeholder="Auto-filled from schedule" />
+                        <Input placeholder="Auto-filled from schedule" readOnly />
                       </Form.Item>
                       <Form.Item
                         name="speaker"
                         label={
                           <span style={{ color: "#333", fontWeight: 600 }}>
-                            Speaker
+                            Instructor
                           </span>
                         }
                         style={{ flex: 1, marginBottom: 0 }}
                       >
-                        <Input placeholder="Auto-filled from schedule" />
+                        <Input placeholder="Auto-filled from schedule" readOnly />
                       </Form.Item>
                     </div>
 
@@ -237,7 +417,7 @@ export default function LVC_Feedback() {
                       }
                       style={{ marginTop: 12 }}
                     >
-                      <Input placeholder="Topic" />
+                      <Input placeholder="Auto-filled from schedule" readOnly />
                     </Form.Item>
                   </div>
 
@@ -393,7 +573,7 @@ export default function LVC_Feedback() {
                     <div>
                       Do you feel your feedback is valued and acted upon by the System?
                     </div>
-                    <Form.Item name="pace" style={{ marginTop: 8 }}>
+                    <Form.Item name="feedback_valued" style={{ marginTop: 8 }}>
                       <Radio.Group style={{display: "flex", flexDirection: "column", gap: 12}}>
                         <Radio value="too_fast">Always</Radio>
                         <Radio value="neutral">Sometimes</Radio>
@@ -432,7 +612,7 @@ export default function LVC_Feedback() {
                     <div>
                       Was the material provided is easy to understand and alligned with the class?
                     </div>
-                    <Form.Item name="pace" style={{ marginTop: 8 }}>
+                    <Form.Item name="material_aligned" style={{ marginTop: 8 }}>
                       <Radio.Group style={{display: "flex", flexDirection: "column", gap: 12}}>
                         <Radio value="too_fast">Strongly Agree</Radio>
                         <Radio value="neutral">Agree</Radio>

@@ -20,6 +20,7 @@ export default function LVRC_Feedback() {
   const [form] = Form.useForm();
   const [basicFilled, setBasicFilled] = useState(false);
   const [loadingEvent, setLoadingEvent] = useState(false);
+  const [availableSessions, setAvailableSessions] = useState([]);
 
   const styles = {
     hero: {
@@ -76,6 +77,20 @@ export default function LVRC_Feedback() {
     return false;
   }
 
+  // Get available sessions for a given date
+  function getAvailableSessionsForDate(dateStr) {
+    const dateEvents = scheduleData.filter((e) => e.date === dateStr);
+    const sessions = new Set();
+    
+    dateEvents.forEach(event => {
+      if (sessionMatchesTiming('morning', event.timing)) sessions.add('morning');
+      if (sessionMatchesTiming('afternoon', event.timing)) sessions.add('afternoon');
+      if (sessionMatchesTiming('evening', event.timing)) sessions.add('evening');
+    });
+    
+    return Array.from(sessions);
+  }
+
   async function fetchEventDetails(dateStr, session) {
     const events = scheduleData.filter((e) => e.date === dateStr);
     if (!events || events.length === 0) return null;
@@ -98,9 +113,11 @@ export default function LVRC_Feedback() {
     const sessionVal = allValues.session || form.getFieldValue("session");
     const hasDate = !!lectureVal;
     const hasSession = !!sessionVal;
-    setBasicFilled(hasDate && hasSession);
 
-    if (!hasDate) return;
+    if (!hasDate) {
+      setBasicFilled(false);
+      return;
+    }
 
     let dateStr = "";
     try {
@@ -110,6 +127,26 @@ export default function LVRC_Feedback() {
           : String(lectureVal);
     } catch (e) {
       dateStr = String(lectureVal);
+    }
+
+    // If date changed, update available sessions
+    if (changedValues.lectureDate) {
+      const sessions = getAvailableSessionsForDate(dateStr);
+      setAvailableSessions(sessions);
+      
+      // Clear session if it's not available for the selected date
+      if (sessionVal && !sessions.includes(sessionVal)) {
+        form.setFieldsValue({ session: undefined, paper: "", speaker: "", topic: "" });
+        setBasicFilled(false);
+        return;
+      }
+    }
+    
+    setBasicFilled(hasDate && hasSession);
+
+    if (!hasSession) {
+      form.setFieldsValue({ paper: "", speaker: "", topic: "" });
+      return;
     }
 
     // clear while loading
@@ -176,7 +213,22 @@ export default function LVRC_Feedback() {
                       Lecture Date
                     </span>
                   }
-                  rules={[{ required: true }]}
+                  rules={[
+                    { required: true, message: "Please select a date" },
+                    {
+                      validator: (_, value) => {
+                        if (!value) return Promise.resolve();
+                        const dateStr = value.format("YYYY-MM-DD");
+                        const events = scheduleData.filter((e) => e.date === dateStr);
+                        if (!events || events.length === 0) {
+                          return Promise.reject(
+                            new Error("This date does not have any lecture schedule. Please select a date with scheduled lectures.")
+                          );
+                        }
+                        return Promise.resolve();
+                      },
+                    },
+                  ]}
                   style={{ flex: 1, marginBottom: 0 }}
                 >
                   <DatePicker style={{ width: "100%" }} />
@@ -189,7 +241,23 @@ export default function LVRC_Feedback() {
                       Session
                     </span>
                   }
-                  rules={[{ required: true }]}
+                  rules={[
+                    { required: true, message: "Please select a session" },
+                    {
+                      validator: (_, value) => {
+                        if (!value) return Promise.resolve();
+                        const lectureVal = form.getFieldValue("lectureDate");
+                        if (!lectureVal) return Promise.resolve();
+                        
+                        if (!availableSessions.includes(value)) {
+                          return Promise.reject(
+                            new Error("No event is scheduled in this time slot for the selected date.")
+                          );
+                        }
+                        return Promise.resolve();
+                      },
+                    },
+                  ]}
                   style={{ flex: 1, marginBottom: 0 }}
                 >
                   <Select placeholder="Select session">

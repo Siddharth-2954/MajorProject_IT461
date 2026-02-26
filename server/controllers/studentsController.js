@@ -146,6 +146,8 @@ async function login(req, res) {
                 req.session.user = {
                   registrationId: user.registrationId,
                   email: user.email,
+                  firstName: user.firstName,
+                  lastName: user.lastName,
                 };
               return res.json({
                 success: true,
@@ -198,6 +200,8 @@ async function login(req, res) {
                 req.session.user = {
                   registrationId: user.registrationId,
                   email: user.email,
+                  firstName: user.firstName,
+                  lastName: user.lastName,
                 };
               return res.json({
                 success: true,

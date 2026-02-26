@@ -3,6 +3,7 @@ const router = express.Router();
 const superAdminController = require('../controllers/superAdminController');
 const lvcScheduleController = require('../controllers/lvcScheduleController');
 const lvrcScheduleController = require('../controllers/lvrcScheduleController');
+const chapterController = require('../controllers/chapterController');
 const requireSuperAdmin = require('../middleware/requireSuperAdmin');
 const auditLogger = require('../middleware/auditLogger');
 const { subjectUpload } = require('../config/multer');
@@ -56,6 +57,13 @@ router.get('/subjects/unassigned', superAdminController.getUnassignedSubjects);
 router.delete('/subjects/:id', superAdminController.deleteSubject);
 router.post('/subjects/:id/assign', superAdminController.assignSubjectToAdmin);
 router.post('/subjects/:id/unassign', superAdminController.unassignSubject);
+
+// Chapter Management
+router.post('/chapters', chapterController.createChapter);
+router.get('/chapters/subject/:subjectId', chapterController.getChaptersBySubject);
+router.get('/chapters/:id', chapterController.getChapterById);
+router.put('/chapters/:id', chapterController.updateChapter);
+router.delete('/chapters/:id', chapterController.deleteChapter);
 
 // LVC Schedule Management
 router.post('/lvc-schedules', lvcScheduleController.createSchedule);

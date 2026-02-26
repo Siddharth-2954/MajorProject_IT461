@@ -16,8 +16,8 @@ exports.getDashboard = async (req, res) => {
     // Get study materials count
     const [[materialCount]] = await pool.query("SELECT COUNT(*) AS cnt FROM study_materials");
     
-    // Get unique subjects count
-    const subjectsCount = await studyMaterialModel.countUniquSubjects();
+    // Get subjects count from subjects table
+    const subjectsCount = await studyMaterialModel.countAllSubjects();
     
     // Recent activity from audit logs
     const recentActivity = await adminModel.getAuditLogs(20);

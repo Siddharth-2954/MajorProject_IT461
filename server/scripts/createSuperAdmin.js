@@ -142,7 +142,7 @@ async function createSuperAdmin() {
     console.log(`  Email: ${email}`);
     console.log(`  Role: Super Admin`);
     console.log(`  Status: Active`);
-    console.log('\nYou can now login at: /admin/login');
+    console.log('\nYou can now login at: /admin/!login');
     console.log('After login, you will be redirected to the super admin dashboard.\n');
 
     // Log the creation in audit logs

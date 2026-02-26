@@ -2,6 +2,23 @@ const lvcScheduleModel = require("../models/lvcScheduleModel");
 const lvrcScheduleModel = require("../models/lvrcScheduleModel");
 const studyMaterialModel = require("../models/studyMaterialModel");
 
+const normalizeSchedule = (schedule) => {
+  if (!schedule) return schedule;
+  const rawDate = schedule.scheduledDate;
+  let normalizedDate = rawDate;
+
+  if (rawDate instanceof Date) {
+    normalizedDate = rawDate.toISOString().slice(0, 10);
+  } else if (typeof rawDate === "string") {
+    normalizedDate = rawDate.split("T")[0];
+  }
+
+  return {
+    ...schedule,
+    scheduledDate: normalizedDate,
+  };
+};
+
 // Create LVC Schedule
 exports.createSchedule = async (req, res) => {
   try {
@@ -37,35 +54,35 @@ exports.createSchedule = async (req, res) => {
     // Auto-create LVRC schedules for all subjects 36 hours after LVC
     try {
       // Parse LVC date and time
-      const lvcDateTime = new Date(`${scheduledDate}T${startTime}Z`); // Use UTC
+      const lvcDateTime = new Date(`${scheduledDate}T${startTime}`);
       
       // Add 36 hours (36 * 60 * 60 * 1000 milliseconds)
       const lvrcTotalMs = lvcDateTime.getTime() + (36 * 60 * 60 * 1000);
       const lvrcDateTime = new Date(lvrcTotalMs);
       
       // Calculate LVRC date in YYYY-MM-DD format
-      const lvrcYear = lvrcDateTime.getUTCFullYear();
-      const lvrcMonth = String(lvrcDateTime.getUTCMonth() + 1).padStart(2, '0');
-      const lvrcDay = String(lvrcDateTime.getUTCDate()).padStart(2, '0');
+      const lvrcYear = lvrcDateTime.getFullYear();
+      const lvrcMonth = String(lvrcDateTime.getMonth() + 1).padStart(2, '0');
+      const lvrcDay = String(lvrcDateTime.getDate()).padStart(2, '0');
       const lvrcDate = `${lvrcYear}-${lvrcMonth}-${lvrcDay}`;
       
       // Calculate LVRC start time in HH:MM:SS format
-      const lvrcHour = String(lvrcDateTime.getUTCHours()).padStart(2, '0');
-      const lvrcMinute = String(lvrcDateTime.getUTCMinutes()).padStart(2, '0');
-      const lvrcSecond = String(lvrcDateTime.getUTCSeconds()).padStart(2, '0');
+      const lvrcHour = String(lvrcDateTime.getHours()).padStart(2, '0');
+      const lvrcMinute = String(lvrcDateTime.getMinutes()).padStart(2, '0');
+      const lvrcSecond = String(lvrcDateTime.getSeconds()).padStart(2, '0');
       const lvrcTime = `${lvrcHour}:${lvrcMinute}:${lvrcSecond}`;
       
       // Calculate duration in milliseconds
-      const startMs = new Date(`${scheduledDate}T${startTime}Z`).getTime();
-      const endMs = new Date(`${scheduledDate}T${endTime}Z`).getTime();
+      const startMs = new Date(`${scheduledDate}T${startTime}`).getTime();
+      const endMs = new Date(`${scheduledDate}T${endTime}`).getTime();
       const durationMs = endMs - startMs;
       
       // Calculate LVRC end time
       const lvrcEndTotalMs = lvrcTotalMs + durationMs;
       const lvrcEndDateTime = new Date(lvrcEndTotalMs);
-      const lvrcEndHour = String(lvrcEndDateTime.getUTCHours()).padStart(2, '0');
-      const lvrcEndMinute = String(lvrcEndDateTime.getUTCMinutes()).padStart(2, '0');
-      const lvrcEndSecond = String(lvrcEndDateTime.getUTCSeconds()).padStart(2, '0');
+      const lvrcEndHour = String(lvrcEndDateTime.getHours()).padStart(2, '0');
+      const lvrcEndMinute = String(lvrcEndDateTime.getMinutes()).padStart(2, '0');
+      const lvrcEndSecond = String(lvrcEndDateTime.getSeconds()).padStart(2, '0');
       const lvrcEndTime = `${lvrcEndHour}:${lvrcEndMinute}:${lvrcEndSecond}`;
 
       // Get all subjects to create LVRC for each
@@ -122,7 +139,7 @@ exports.getSchedulesBySubject = async (req, res) => {
 
     return res.json({
       success: true,
-      schedules
+      schedules: schedules.map(normalizeSchedule)
     });
   } catch (err) {
     console.error("Get schedules error:", err);
@@ -140,7 +157,7 @@ exports.getAllSchedules = async (req, res) => {
 
     return res.json({
       success: true,
-      schedules,
+      schedules: schedules.map(normalizeSchedule),
       count: schedules.length
     });
   } catch (err) {
@@ -169,7 +186,7 @@ exports.getScheduleById = async (req, res) => {
 
     return res.json({
       success: true,
-      schedule
+      schedule: normalizeSchedule(schedule)
     });
   } catch (err) {
     console.error("Get schedule error:", err);

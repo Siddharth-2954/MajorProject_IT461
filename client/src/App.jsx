@@ -58,8 +58,15 @@ import AdminAnnouncementsExam from "./components/Admins/AdminAnnouncementsExam";
 import StudyMaterialsAdmin from "./components/Admins/StudyMaterialsAdmin";
 import SuperAdminHome from "./components/SuperAdmin/SuperAdminHome";
 import SubjectsAdmin from "./components/SuperAdmin/SubjectsAdmin";
+import SubjectDetail from "./components/SuperAdmin/SubjectDetail";
+import SubjectsListForMCQ from "./components/SuperAdmin/SubjectsListForMCQ";
+import ChaptersForMCQ from "./components/SuperAdmin/ChaptersForMCQ";
+import CreateMCQQuiz from "./components/SuperAdmin/CreateMCQQuiz";
+import PreviousQuizzes from "./components/SuperAdmin/PreviousQuizzes";
 import { SuperAdminRoute } from "./components/SuperAdmin/SuperAdminRoute";
 import { AuthContext } from "./AuthContext";
+import FeedbacksAdmin from "./components/SuperAdmin/FeedbacksAdmin";
+import MCQQuizBuilder from "./components/SuperAdmin/MCQQuizBuilder";
 
 const { Title } = Typography;
 
@@ -179,7 +186,37 @@ export default function App() {
             <SubjectsAdmin />
           </SuperAdminRoute>
         } />
-        
+        <Route path="/super-admin/subjects/:id" element={
+          <SuperAdminRoute>
+            <SubjectDetail />
+          </SuperAdminRoute>
+        } />
+        <Route path="/super-admin/subjects-list" element={
+          <SuperAdminRoute>
+            <SubjectsListForMCQ />
+          </SuperAdminRoute>
+        } />
+        <Route path="/super-admin/mcq/subjects/:id" element={
+          <SuperAdminRoute>
+            <ChaptersForMCQ />
+          </SuperAdminRoute>
+        } />
+        <Route path="/super-admin/feedbacks" element={
+          <SuperAdminRoute>
+            <FeedbacksAdmin />
+          </SuperAdminRoute>
+        } />
+        <Route path="/super-admin/prev-quiz" element={
+          <SuperAdminRoute>
+            <PreviousQuizzes />
+          </SuperAdminRoute>
+        } />
+        <Route path="/super-admin/mcq/create/:subjectId/:chapterId" element={
+          <SuperAdminRoute>
+            <MCQQuizBuilder />
+          </SuperAdminRoute>
+        } />
+
         {/* Regular Admin Routes */}
         <Route path="/admin" element={<ProtectedRoute><AdminLayout/></ProtectedRoute>}>
           <Route index element={<AdminHome/>} />

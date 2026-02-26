@@ -27,7 +27,8 @@ import {
   ClockCircleOutlined,
   CrownOutlined,
   DeleteOutlined,
-  EditOutlined
+  EditOutlined,
+  QuestionOutlined
 } from "@ant-design/icons";
 
 const { Title, Text } = Typography;
@@ -60,11 +61,6 @@ export default function SuperAdminHome() {
       });
       
       if (!resp.ok) {
-        if (resp.status === 401 || resp.status === 403) {
-          message.error("Access denied. Super admin privileges required.");
-          navigate("/admin/login");
-          return;
-        }
         throw new Error("Failed to load dashboard");
       }
       
@@ -72,7 +68,7 @@ export default function SuperAdminHome() {
       setDashboard(data.dashboard);
     } catch (err) {
       message.error(err.message || "Failed to load dashboard");
-      navigate("/admin/login");
+      navigate("/admin/!login");
     } finally {
       setLoading(false);
     }
@@ -369,16 +365,6 @@ export default function SuperAdminHome() {
         <Col xs={24} sm={12} lg={6}>
           <Card>
             <Statistic
-              title="Super Admins"
-              value={stats.super_admins || 0}
-              prefix={<CrownOutlined />}
-              valueStyle={{ color: '#faad14' }}
-            />
-          </Card>
-        </Col>
-        <Col xs={24} sm={12} lg={6}>
-          <Card>
-            <Statistic
               title="Total Students"
               value={dashboard?.students || 0}
               prefix={<UserOutlined />}
@@ -427,6 +413,48 @@ export default function SuperAdminHome() {
               title="Study Materials"
               value={dashboard?.studyMaterials || 0}
               prefix={<BookOutlined />}
+            />
+          </Card>
+        </Col>
+        <Col xs={24} sm={12} lg={6}>
+          <Card
+            style={{ cursor: 'pointer' }}
+            onClick={() => navigate('/super-admin/subjects-list')}
+            hoverable
+          >
+            <Statistic
+              title="MCQ Quiz"
+              value="Create"
+              prefix={<QuestionOutlined />}
+              valueStyle={{ color: '#722ed1' }}
+            />
+          </Card>
+        </Col>
+        <Col xs={24} sm={12} lg={6}>
+          <Card
+            style={{ cursor: 'pointer' }}
+            onClick={() => navigate('/super-admin/prev-quiz')}
+            hoverable
+          >
+            <Statistic
+              title="Previous Quiz"
+              value="View"
+              prefix={<FileTextOutlined />}
+              valueStyle={{ color: '#13c2c2' }}
+            />
+          </Card>
+        </Col>
+        <Col xs={24} sm={12} lg={6}>
+          <Card
+            style={{ cursor: 'pointer' }}
+            onClick={() => navigate('/super-admin/feedbacks')}
+            hoverable
+          >
+            <Statistic
+              title="Feedbacks"
+              value="View"
+              prefix={<FileTextOutlined />}
+              valueStyle={{ color: '#faad14' }}
             />
           </Card>
         </Col>

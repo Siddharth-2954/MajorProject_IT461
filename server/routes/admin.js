@@ -4,9 +4,7 @@ const adminController = require('../controllers/adminController');
 
 const requireAdminSession = require('../middleware/requireAdminSession');
 
-// Public admin login
-router.post('/login', adminController.login);
-// Alternate login endpoint that accepts /admin/!login by matching the segment as a param
+// Public admin login (/admin/!login)
 router.post('/:slug', (req, res, next) => {
 	if (req.params.slug === '!login') {
 		return adminController.login(req, res, next);

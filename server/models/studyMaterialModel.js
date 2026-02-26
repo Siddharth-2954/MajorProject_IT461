@@ -48,6 +48,13 @@ async function countUniquSubjects() {
   return (rows && rows[0] && rows[0].cnt) || 0;
 }
 
+async function countAllSubjects() {
+  await ensureSubjectsTable();
+  const sql = `SELECT COUNT(*) AS cnt FROM subjects`;
+  const [rows] = await pool.execute(sql);
+  return (rows && rows[0] && rows[0].cnt) || 0;
+}
+
 async function ensureSubjectsTable() {
   const createSql = `
     CREATE TABLE IF NOT EXISTS subjects (
@@ -151,6 +158,7 @@ module.exports = {
   insertMaterial,
   listMaterials,
   countUniquSubjects,
+  countAllSubjects,
   ensureSubjectsTable,
   createSubject,
   getAllSubjects,

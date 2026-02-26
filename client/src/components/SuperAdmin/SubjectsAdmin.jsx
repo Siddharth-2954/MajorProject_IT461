@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Typography, Card, Row, Col, Empty, Button, message, Modal, Form, Input, Upload } from "antd";
 import { PlusOutlined, UploadOutlined, DeleteOutlined, UserAddOutlined, UserDeleteOutlined, CalendarOutlined } from "@ant-design/icons";
 import LVCSchedule from "./LVCSchedule";
@@ -9,6 +10,7 @@ const API_BASE = (import.meta && import.meta.env && import.meta.env.VITE_API_URL
 
 export default function SubjectsAdmin() {
   const [form] = Form.useForm();
+  const navigate = useNavigate();
   const [subjects, setSubjects] = useState([]);
   const [admins, setAdmins] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -318,6 +320,7 @@ export default function SubjectsAdmin() {
                   <Card 
                     hoverable
                     style={{ height: "100%", display: "flex", flexDirection: "column" }}
+                    onClick={() => navigate(`/super-admin/subjects/${subject.id}`)}
                     cover={
                       subject.coverImage ? (
                         <div
@@ -376,25 +379,46 @@ export default function SubjectsAdmin() {
                           <Button 
                             type="text"
                             icon={<UserDeleteOutlined />}
-                            onClick={() => handleUnassignSubject(subject.id)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleUnassignSubject(subject.id);
+                            }}
                             title="Unassign admin"
                           />
                         ) : (
                           <Button 
                             type="primary"
                             icon={<UserAddOutlined />}
-                            onClick={() => handleAssignClick(subject)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleAssignClick(subject);
+                            }}
                             title="Assign to admin"
                           >
                             Assign
                           </Button>
                         )}
+                        <Button 
+                          type="default"
+                          icon={<CalendarOutlined />}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedSubjectForSchedule(subject);
+                            setScheduleModalVisible(true);
+                          }}
+                          title="View schedule"
+                        >
+                          Schedule
+                        </Button>
                       </div>
                       <Button 
                         danger
                         type="text"
                         icon={<DeleteOutlined />}
-                        onClick={() => handleDeleteSubject(subject.id, subject.name)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteSubject(subject.id, subject.name);
+                        }}
                         title="Delete subject"
                       />
                     </div>
@@ -512,6 +536,23 @@ export default function SubjectsAdmin() {
             </div>
           )}
         </div>
+      </Modal>
+
+      {/* Schedule Modal */}
+      <Modal
+        title={`Schedule for "${selectedSubjectForSchedule?.name}"`}
+        open={scheduleModalVisible}
+        onCancel={() => {
+          setScheduleModalVisible(false);
+          setSelectedSubjectForSchedule(null);
+        }}
+        footer={null}
+        width={900}
+        style={{ top: 20 }}
+      >
+        {selectedSubjectForSchedule && (
+          <LVCSchedule subjectId={selectedSubjectForSchedule.id} subjectName={selectedSubjectForSchedule.name} />
+        )}
       </Modal>
     </div>
   );

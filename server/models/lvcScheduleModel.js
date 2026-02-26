@@ -99,8 +99,9 @@ async function createSchedule({ subjectId, title, description, scheduledDate, st
 async function getSchedulesBySubject(subjectId) {
   await ensureTable();
   const sql = `
-    SELECT id, subjectId, title, description, scheduledDate, startTime, endTime, 
-           instructorName, meetingLink, capacity, createdAt, updatedAt
+    SELECT id, subjectId, title, description,
+           DATE_FORMAT(scheduledDate, '%Y-%m-%d') AS scheduledDate,
+           startTime, endTime, instructorName, meetingLink, capacity, createdAt, updatedAt
     FROM lvc_schedules
     WHERE subjectId = ?
     ORDER BY scheduledDate ASC, startTime ASC
@@ -112,8 +113,9 @@ async function getSchedulesBySubject(subjectId) {
 async function getScheduleById(id) {
   await ensureTable();
   const sql = `
-    SELECT id, subjectId, title, description, scheduledDate, startTime, endTime,
-           instructorName, meetingLink, capacity, createdAt, updatedAt
+    SELECT id, subjectId, title, description,
+           DATE_FORMAT(scheduledDate, '%Y-%m-%d') AS scheduledDate,
+           startTime, endTime, instructorName, meetingLink, capacity, createdAt, updatedAt
     FROM lvc_schedules
     WHERE id = ?
   `;
@@ -128,8 +130,9 @@ async function getAllSchedules(limit = 100) {
     const limitValue = Math.max(1, Math.min(parseInt(limit, 10) || 100, 10000));
     
     const sql = `
-      SELECT s.id, s.subjectId, s.title, s.description, s.scheduledDate, s.startTime, s.endTime,
-             s.instructorName, s.meetingLink, s.capacity, s.createdAt, s.updatedAt,
+      SELECT s.id, s.subjectId, s.title, s.description,
+             DATE_FORMAT(s.scheduledDate, '%Y-%m-%d') AS scheduledDate,
+             s.startTime, s.endTime, s.instructorName, s.meetingLink, s.capacity, s.createdAt, s.updatedAt,
              COALESCE(sub.name, 'Unknown Subject') as subjectName
       FROM lvc_schedules s
       LEFT JOIN subjects sub ON s.subjectId = sub.id
@@ -146,8 +149,9 @@ async function getAllSchedules(limit = 100) {
     try {
       const limitValue = Math.max(1, Math.min(parseInt(limit, 10) || 100, 10000));
       const fallbackSql = `
-        SELECT id, subjectId, title, description, scheduledDate, startTime, endTime,
-               instructorName, meetingLink, capacity, createdAt, updatedAt
+        SELECT id, subjectId, title, description,
+               DATE_FORMAT(scheduledDate, '%Y-%m-%d') AS scheduledDate,
+               startTime, endTime, instructorName, meetingLink, capacity, createdAt, updatedAt
         FROM lvc_schedules
         ORDER BY scheduledDate DESC, startTime DESC
         LIMIT ${limitValue}

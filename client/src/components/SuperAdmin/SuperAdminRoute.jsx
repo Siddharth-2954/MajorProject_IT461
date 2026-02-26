@@ -1,26 +1,21 @@
-import React, { useContext, useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Navigate } from 'react-router-dom';
-import { AuthContext } from '../../AuthContext';
 
-const API_BASE = 'http://localhost:8000';
+const API_BASE = (import.meta && import.meta.env && import.meta.env.VITE_API_URL) || 'http://localhost:8000';
 
 export function SuperAdminRoute({ children }) {
-  const { user } = useContext(AuthContext);
   const [loading, setLoading] = useState(true);
-  const [admin, setAdmin] = useState(null);
+  const [authorized, setAuthorized] = useState(false);
 
   useEffect(() => {
     async function checkAuth() {
       try {
-        const res = await fetch(API_BASE + '/admin/me', { credentials: 'include' });
-        if (res.ok) {
-          const json = await res.json();
-          if (json && json.admin) {
-            setAdmin(json.admin);
-          }
-        }
+        const res = await fetch(API_BASE + '/super-admin/dashboard', {
+          credentials: 'include',
+        });
+        setAuthorized(res.ok);
       } catch (err) {
-        console.error('Auth check failed:', err);
+        setAuthorized(false);
       } finally {
         setLoading(false);
       }
@@ -32,9 +27,8 @@ export function SuperAdminRoute({ children }) {
     return <div style={{ padding: 32, textAlign: 'center' }}>Loading...</div>;
   }
 
-  // Check if the user is authenticated and is a super admin
-  if (!admin || admin.role !== 'super_admin') {
-    return <Navigate to="/admin/login" replace />;
+  if (!authorized) {
+    return <Navigate to="/admin/!login" replace />;
   }
 
   return children;

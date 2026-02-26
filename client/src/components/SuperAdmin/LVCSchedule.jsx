@@ -14,6 +14,7 @@ import {
   Empty,
   Spin,
   Tag,
+  Select,
 } from 'antd';
 import { DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
@@ -27,6 +28,8 @@ const LVCSchedule = ({ subjectId, subjectName }) => {
   const [loading, setLoading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editingId, setEditingId] = useState(null);
+  const [admins, setAdmins] = useState([]);
+  const [loadingAdmins, setLoadingAdmins] = useState(false);
 
   useEffect(() => {
     if (subjectId) {
@@ -54,14 +57,34 @@ const LVCSchedule = ({ subjectId, subjectName }) => {
     }
   };
 
+  const loadAdmins = async () => {
+    try {
+      setLoadingAdmins(true);
+      const response = await fetch(`${API_BASE}/super-admin/admins`, {
+        credentials: 'include',
+      });
+      const data = await response.json();
+      if (data.admins) {
+        setAdmins(data.admins);
+      }
+    } catch (err) {
+      console.error('Load admins error:', err);
+    } finally {
+      setLoadingAdmins(false);
+    }
+  };
+
   const handleOpenModal = (schedule = null) => {
+    loadAdmins();
     if (schedule) {
       setIsEditing(true);
       setEditingId(schedule.id);
+      // Extract just the date portion from ISO string to avoid timezone issues
+      const dateStr = schedule.scheduledDate.split('T')[0];
       form.setFieldsValue({
         title: schedule.title,
         description: schedule.description,
-        scheduledDate: dayjs(schedule.scheduledDate),
+        scheduledDate: dayjs(dateStr),
         startTime: dayjs(schedule.startTime, 'HH:mm:ss'),
         endTime: dayjs(schedule.endTime, 'HH:mm:ss'),
         instructorName: schedule.instructorName,
@@ -83,11 +106,18 @@ const LVCSchedule = ({ subjectId, subjectName }) => {
 
   const handleSubmit = async (values) => {
     try {
+      // Get the date in user's local timezone without conversion
+      const selectedDate = values.scheduledDate.toDate();
+      const year = selectedDate.getFullYear();
+      const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
+      const day = String(selectedDate.getDate()).padStart(2, '0');
+      const localDate = `${year}-${month}-${day}`;
+
       const payload = {
         subjectId,
         title: values.title,
         description: values.description,
-        scheduledDate: values.scheduledDate.format('YYYY-MM-DD'),
+        scheduledDate: localDate,
         startTime: values.startTime.format('HH:mm:ss'),
         endTime: values.endTime.format('HH:mm:ss'),
         instructorName: values.instructorName,
@@ -161,7 +191,11 @@ const LVCSchedule = ({ subjectId, subjectName }) => {
       title: 'Date',
       dataIndex: 'scheduledDate',
       key: 'scheduledDate',
-      render: (date) => dayjs(date).format('DD/MM/YYYY'),
+      render: (date) => {
+        // Extract just the date portion from ISO string to avoid timezone conversion
+        const dateStr = date.split('T')[0];
+        return dayjs(dateStr).format('DD/MM/YYYY');
+      },
       width: 120,
     },
     {
@@ -311,9 +345,27 @@ const LVCSchedule = ({ subjectId, subjectName }) => {
           <Form.Item
             label="Instructor Name"
             name="instructorName"
-            rules={[{ required: true, message: 'Please enter instructor name' }]}
+            rules={[{ required: true, message: 'Please select an instructor' }]}
           >
-            <Input placeholder="Instructor name" />
+            <Select
+              placeholder="Select instructor"
+              loading={loadingAdmins}
+              optionLabelProp="label"
+            >
+              {admins.map((admin) => {
+                const fullName = `${admin.firstName} ${admin.lastName}`.trim();
+                return (
+                  <Select.Option
+                    key={admin.username}
+                    value={admin.username}
+                    label={fullName}
+                  >
+                    {fullName}
+                    <span style={{ fontSize: 12, color: '#999' }}> (@{admin.username})</span>
+                  </Select.Option>
+                );
+              })}
+            </Select>
           </Form.Item>
 
           <Form.Item

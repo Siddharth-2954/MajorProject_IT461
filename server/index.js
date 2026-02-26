@@ -29,6 +29,7 @@ app.use(
 		cookie: {
 			httpOnly: true,
 			secure: process.env.NODE_ENV === 'production',
+			sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
 			maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
 		},
 	})
@@ -52,6 +53,9 @@ app.use('/study-materials', require('./routes/studyMaterials'));
 // Public schedules (LVC and LVRC)
 app.use('/schedules', require('./routes/schedules'));
 
+// Feedbacks
+app.use('/feedbacks', require('./routes/feedbacks'));
+
 // Serve uploaded files (announcements attachments)
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
@@ -73,6 +77,9 @@ app.use(adminRoute, require('./routes/admin'));
 
 // Mount super admin routes
 app.use('/super-admin', require('./routes/superAdmin'));
+
+// Mount MCQ routes (protected by super-admin middleware)
+app.use('/super-admin/mcq', require('./routes/mcq'));
 
 
 
