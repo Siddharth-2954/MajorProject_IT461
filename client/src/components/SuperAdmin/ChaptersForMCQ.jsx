@@ -133,7 +133,7 @@ export default function ChaptersForMCQ() {
                 }}
                 hoverable
                 onClick={() =>
-                  navigate(`/super-admin/mcq/create/${id}/${chapter.id}`)
+                  navigate(`/super-admin/mcq/setup/${id}/${chapter.id}`)
                 }
               >
                 <div

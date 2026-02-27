@@ -103,6 +103,88 @@ const MCQQuizController = {
       res.status(500).json({ error: "Failed to delete quiz" });
     }
   },
+
+  // Submit quiz answers
+  async submitQuiz(req, res) {
+    try {
+      const { quizId } = req.params;
+      const { answers } = req.body;
+
+      // Get student from session
+      const studentSession = req.session && req.session.user;
+      if (!studentSession || !studentSession.registrationId) {
+        return res.status(401).json({ error: "Student not authenticated" });
+      }
+
+      if (!answers || !Array.isArray(answers)) {
+        return res.status(400).json({ error: "Invalid answers format" });
+      }
+
+      const result = await MCQQuizModel.submitQuizAnswers(studentSession.registrationId, quizId, answers);
+
+      res.json({
+        success: true,
+        ...result,
+      });
+    } catch (err) {
+      console.error("Error submitting quiz:", err);
+      res.status(500).json({ error: "Failed to submit quiz" });
+    }
+  },
+
+  // Get student statistics
+  async getStudentStats(req, res) {
+    try {
+      // Get student from session
+      const studentSession = req.session && req.session.user;
+      if (!studentSession || !studentSession.registrationId) {
+        return res.status(401).json({ error: "Student not authenticated" });
+      }
+
+      const stats = await MCQQuizModel.getStudentStatsBySubject(studentSession.registrationId);
+
+      res.json({
+        success: true,
+        stats,
+      });
+    } catch (err) {
+      console.error("Error getting student stats:", err);
+      res.status(500).json({ error: "Failed to get student stats" });
+    }
+  },
+
+  // Get all quizzes for a subject
+  async getQuizzesBySubject(req, res) {
+    try {
+      const { subjectId } = req.params;
+      const quizzes = await MCQQuizModel.getQuizzesBySubject(subjectId);
+
+      res.json({
+        success: true,
+        quizzes,
+      });
+    } catch (err) {
+      console.error("Error getting quizzes by subject:", err);
+      res.status(500).json({ error: "Failed to get quizzes" });
+    }
+  },
+
+  // Get chapters by subject
+  async getChaptersBySubject(req, res) {
+    try {
+      const { subjectId } = req.params;
+      const chapterModel = require('../models/chapterModel');
+      const chapters = await chapterModel.getChaptersBySubject(subjectId);
+
+      res.json({
+        success: true,
+        chapters,
+      });
+    } catch (err) {
+      console.error("Error getting chapters:", err);
+      res.status(500).json({ error: "Failed to get chapters" });
+    }
+  },
 };
 
 module.exports = MCQQuizController;

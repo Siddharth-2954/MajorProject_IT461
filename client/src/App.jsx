@@ -44,6 +44,8 @@ import LVRC_Feedback from "./components/Students/LVRC_Feedback";
 import LiveClasses from "./components/Students/LiveClasses";
 import DownloadNotes from "./components/Students/DownloadNotes";
 import MCQDashboard from "./components/Students/MCQDashboard";
+import MCQSubjectView from "./components/Students/MCQSubjectView";
+import MCQQuizTaker from "./components/Students/MCQQuizTaker";
 import AdminHome from "./components/Admins/AdminHome";
 import AdminLayout from "./components/Admins/AdminLayout";
 import StudyMaterialViewer from "./components/StudyMaterialViewer";
@@ -161,6 +163,8 @@ export default function App() {
         <Route path="/live_classes" element={<ProtectedRoute><LiveClasses/></ProtectedRoute>} />
         <Route path="/download-notes" element={<ProtectedRoute><DownloadNotes/></ProtectedRoute>} />
         <Route path="/mcq-dashboard" element={<ProtectedRoute><MCQDashboard/></ProtectedRoute>} />
+        <Route path="/mcq-subjects/:subjectId" element={<ProtectedRoute><MCQSubjectView/></ProtectedRoute>} />
+        <Route path="/mcq-quiz/:quizId" element={<ProtectedRoute><MCQQuizTaker/></ProtectedRoute>} />
 
 
         <Route path="/admin/!login" element={<AdminLogin/>} />
@@ -209,6 +213,11 @@ export default function App() {
         <Route path="/super-admin/prev-quiz" element={
           <SuperAdminRoute>
             <PreviousQuizzes />
+          </SuperAdminRoute>
+        } />
+        <Route path="/super-admin/mcq/setup/:subjectId/:chapterId" element={
+          <SuperAdminRoute>
+            <CreateMCQQuiz />
           </SuperAdminRoute>
         } />
         <Route path="/super-admin/mcq/create/:subjectId/:chapterId" element={

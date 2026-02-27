@@ -10,7 +10,7 @@ const app = express();
 // Use cors package with optional origin from env
 app.use(
 	cors({
-		origin: 'http://localhost:5173', // Allow all origins for development; change in production
+		origin: ['http://localhost:5173', 'http://localhost:5174'], // Allow both ports for development
 		methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
 		allowedHeaders: ['Content-Type', 'Authorization'],
 		credentials: true,
@@ -80,6 +80,9 @@ app.use('/super-admin', require('./routes/superAdmin'));
 
 // Mount MCQ routes (protected by super-admin middleware)
 app.use('/super-admin/mcq', require('./routes/mcq'));
+
+// Mount MCQ routes for students (to take quizzes and view stats)
+app.use('/mcq', require('./routes/mcq'));
 
 
 

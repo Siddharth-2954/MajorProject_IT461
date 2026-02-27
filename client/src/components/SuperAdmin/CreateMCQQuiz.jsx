@@ -33,8 +33,20 @@ export default function CreateMCQQuiz() {
       const found = subjects.find((s) => String(s.id) === String(subjectId));
       setSubject(found || null);
 
-      // TODO: Fetch chapter from API when available
-      setChapter({ id: chapterId, name: `Chapter ${chapterId}` });
+      // Fetch chapter from API
+      if (found) {
+        const chapterResp = await fetch(
+          API_BASE + `/super-admin/chapters/subject/${subjectId}`,
+          { credentials: "include" }
+        );
+
+        if (chapterResp.ok) {
+          const chapterData = await chapterResp.json();
+          const chapters = chapterData.chapters || [];
+          const foundChapter = chapters.find((c) => String(c.id) === String(chapterId));
+          setChapter(foundChapter || null);
+        }
+      }
     } catch (err) {
       console.error(err);
     } finally {
@@ -55,7 +67,7 @@ export default function CreateMCQQuiz() {
       })
     );
     // Redirect to quiz builder
-    navigate(`/super-admin/mcq/builder/${subjectId}/${chapterId}`);
+    navigate(`/super-admin/mcq/create/${subjectId}/${chapterId}`);
   };
 
   return (

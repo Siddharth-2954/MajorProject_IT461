@@ -64,6 +64,20 @@ const MCQQuizModel = {
         )
       `);
 
+      // Create quiz_submissions table for tracking student performance
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS quiz_submissions (
+          id INT PRIMARY KEY AUTO_INCREMENT,
+          studentRegistrationId VARCHAR(100) NOT NULL,
+          quizId INT NOT NULL,
+          score INT NOT NULL,
+          totalQuestions INT NOT NULL,
+          submittedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (quizId) REFERENCES quizzes(id) ON DELETE CASCADE,
+          FOREIGN KEY (studentRegistrationId) REFERENCES students(registrationId) ON DELETE CASCADE
+        )
+      `);
+
       console.log("Quiz tables ensured");
     } catch (err) {
       console.error("Error ensuring quiz tables:", err);
@@ -202,6 +216,122 @@ const MCQQuizModel = {
       return result.affectedRows > 0;
     } catch (err) {
       console.error("Error deleting quiz:", err);
+      throw err;
+    }
+  },
+
+  // Submit quiz answers
+  async submitQuizAnswers(studentRegistrationId, quizId, answers) {
+    try {
+      await this.ensureTables();
+      
+      // Get quiz with questions
+      const quiz = await this.getQuizById(quizId);
+      if (!quiz) {
+        throw new Error("Quiz not found");
+      }
+
+      // Calculate score
+      let correctCount = 0;
+      const totalQuestions = quiz.questions.length;
+
+      quiz.questions.forEach((question, index) => {
+        const studentAnswer = answers[index];
+        if (studentAnswer === question.correctAnswerIndex) {
+          correctCount++;
+        }
+      });
+
+      // Save submission
+      const [result] = await pool.query(
+        `INSERT INTO quiz_submissions (studentRegistrationId, quizId, score, totalQuestions)
+         VALUES (?, ?, ?, ?)`,
+        [studentRegistrationId, quizId, correctCount, totalQuestions]
+      );
+
+      return {
+        submissionId: result.insertId,
+        score: correctCount,
+        totalQuestions,
+        percentage: Math.round((correctCount / totalQuestions) * 100),
+      };
+    } catch (err) {
+      console.error("Error submitting quiz:", err);
+      throw err;
+    }
+  },
+
+  // Get student statistics by subject
+  async getStudentStatsBySubject(studentRegistrationId) {
+    try {
+      await this.ensureTables();
+      
+      const [rows] = await pool.query(
+        `SELECT 
+          s.id as subjectId,
+          s.name as subjectName,
+          COUNT(DISTINCT q.id) as totalQuizzes,
+          COUNT(DISTINCT qq.id) as totalQuestions,
+          COALESCE((
+            SELECT SUM(t.score)
+            FROM (
+              SELECT qs1.quizId, qs1.score
+              FROM quiz_submissions qs1
+              INNER JOIN (
+                SELECT quizId, MAX(submittedAt) as maxSubmittedAt
+                FROM quiz_submissions
+                WHERE studentRegistrationId = ?
+                GROUP BY quizId
+              ) qs2 ON qs1.quizId = qs2.quizId AND qs1.submittedAt = qs2.maxSubmittedAt
+              WHERE qs1.studentRegistrationId = ?
+                AND qs1.quizId IN (SELECT id FROM quizzes WHERE subjectId = s.id)
+            ) t
+          ), 0) as correctAnswers,
+          (
+            SELECT COUNT(DISTINCT quizId)
+            FROM quiz_submissions
+            WHERE studentRegistrationId = ?
+              AND quizId IN (SELECT id FROM quizzes WHERE subjectId = s.id)
+          ) as completedQuizzes
+         FROM subjects s
+         LEFT JOIN quizzes q ON s.id = q.subjectId
+         LEFT JOIN quiz_questions qq ON q.id = qq.quizId
+         GROUP BY s.id, s.name
+         ORDER BY s.name`,
+        [studentRegistrationId, studentRegistrationId, studentRegistrationId]
+      );
+
+      return rows.map((row) => ({
+        subjectId: row.subjectId,
+        subjectName: row.subjectName,
+        totalQuestions: row.totalQuestions || 0,
+        correctAnswers: row.correctAnswers || 0,
+        completedQuizzes: row.completedQuizzes || 0,
+        percentage:
+          row.totalQuestions > 0
+            ? Math.round((row.correctAnswers / row.totalQuestions) * 100)
+            : 0,
+      }));
+    } catch (err) {
+      console.error("Error getting student stats:", err);
+      throw err;
+    }
+  },
+
+  // Get all quizzes for a subject
+  async getQuizzesBySubject(subjectId) {
+    try {
+      const [quizzes] = await pool.query(
+        `SELECT q.id, q.title, q.description, q.createdAt,
+          (SELECT COUNT(*) FROM quiz_questions WHERE quizId = q.id) as questionCount
+         FROM quizzes q
+         WHERE q.subjectId = ?
+         ORDER BY q.createdAt DESC`,
+        [subjectId]
+      );
+      return quizzes;
+    } catch (err) {
+      console.error("Error getting quizzes by subject:", err);
       throw err;
     }
   },

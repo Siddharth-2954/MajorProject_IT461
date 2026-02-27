@@ -312,7 +312,6 @@ const Home = () => {
             </Space>
           </div>
 
-          {/* Right Image */}
           <div className="md:w-1/2 w-full">
             {featuredCourse && (
               <Card
