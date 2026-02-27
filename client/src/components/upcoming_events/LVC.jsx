@@ -68,6 +68,7 @@ export default function LVC() {
             subject: item.subjectName || 'Unknown Subject',
             topic: item.title,
             speaker: item.instructorName || 'TBD',
+            instructorId: item.instructorName || null,
             timing: `${item.startTime} - ${item.endTime}`,
             description: item.description,
             meetingLink: item.meetingLink,
@@ -115,13 +116,21 @@ export default function LVC() {
     let mounted = true;
     async function loadAdminsList() {
       try {
-        const res = await fetch(API_BASE + '/super-admin/admins', {
+        const endpoint = isEventsLvcRoute ? '/auth/admins' : '/super-admin/admins';
+        const res = await fetch(API_BASE + endpoint, {
           credentials: 'include'
         });
         const json = await res.json();
         console.log('Admins list loaded:', json);
         if (mounted && json && Array.isArray(json.admins)) {
-          setAllAdmins(json.admins);
+          if (isEventsLvcRoute) {
+            setAllAdmins(json.admins.map((admin) => ({
+              username: admin.username,
+              displayName: admin.displayName
+            })));
+          } else {
+            setAllAdmins(json.admins);
+          }
         }
       } catch (e) {
         console.error('Error loading admins:', e);
@@ -129,22 +138,33 @@ export default function LVC() {
     }
     loadAdminsList();
     return () => { mounted = false; };
-  }, [isDatabaseRoute]);
+  }, [isDatabaseRoute, isEventsLvcRoute]);
+
+  const resolveInstructorName = (instructorName) => {
+    if (!instructorName) return "TBD";
+    const match = allAdmins.find((admin) => admin.username === instructorName);
+    if (!match) return instructorName;
+    const fullName = [match.firstName, match.lastName].filter(Boolean).join(" ").trim();
+    return match.displayName || fullName || match.username || instructorName;
+  };
 
   // Map scheduleData to use registered admin names as speakers (cycle if fewer admins)
   // Use database schedules for database routes, use scheduleData for regular routes
   const baseData = isDatabaseRoute ? dbSchedules : scheduleData;
-  const mappedData = baseData.map(item => {
+  const mappedData = baseData.map((item) => {
     if (!isDatabaseRoute && admins && admins.length > 0) {
       const idx = (item.key - 1) % admins.length;
       return { ...item, speaker: admins[idx] };
+    }
+    if (isDatabaseRoute) {
+      return { ...item, speaker: resolveInstructorName(item.speaker || item.instructorId) };
     }
     return item;
   });
 
   // Extract unique speakers and subjects from database schedules for filter dropdowns
   const uniqueSpeakers = isDatabaseRoute
-    ? [...new Set(dbSchedules.map(item => item.speaker).filter(Boolean))]
+    ? [...new Set(mappedData.map((item) => item.speaker).filter(Boolean))]
     : [];
   const uniqueSubjectsFromSchedules = isDatabaseRoute
     ? [...new Set(dbSchedules.map(item => item.subject).filter(Boolean))]
